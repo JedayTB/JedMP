@@ -10,9 +10,20 @@ fn main() {
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
     let theme = ColorTheme::new(color_themes::BLACK_THEME);
     theme.apply();
-    let mut wind = Window::new(500, 500, 680, 360, "RMP");
 
-    let mut button_box = Flex::default().with_size(620, 45).row().with_pos(30, 300);
+    let mut wind = Window::new(0, 0, 680, 360, "JedMP");
+    let queue_list = Flex::default()
+        .column()
+        .with_size(65, 300)
+        .left_of(&wind, -70);
+    let _frame = Frame::default().with_label("Test");
+
+    queue_list.end();
+
+    let mut button_box = Flex::default()
+        .with_size(620, 45)
+        .row()
+        .below_of(&wind, -50);
 
     let mut last_song_button = Button::default().with_label("<");
     let mut pause_song_button = Button::default().with_label("Pause");
@@ -20,11 +31,11 @@ fn main() {
 
     button_box.end();
 
-    let mut queue_list = Flex::default()
-        .column()
-        .with_size(65, 300)
-        .right_of(&button_box, 0);
-    let frame = Frame::default().with_label("Test");
+    let button_box_padding_from_queue_list = 40;
+    let new_button_box_x = queue_list.x() + button_box_padding_from_queue_list;
+    let new_button_box_y = button_box.y();
+
+    button_box.set_pos(new_button_box_x, new_button_box_y);
 
     let play_queue = Rc::new(RefCell::new(scan_directory("TestMusicFiles")));
     let play_queue_last = Rc::clone(&play_queue);
