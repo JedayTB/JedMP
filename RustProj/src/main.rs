@@ -1,5 +1,5 @@
 use fltk::{app, button::Button, frame::Frame, group::Flex, prelude::*, window::Window};
-use fltk_theme::{ColorTheme, color_themes};
+use fltk_theme::{ColorTheme, color_themes, widget_schemes};
 use rodio::{Decoder, OutputStream, Sink};
 use std::cell::RefCell;
 use std::fs;
@@ -38,12 +38,15 @@ fn main() {
     button_box.set_pos(new_button_box_x, new_button_box_y);
 
     let play_queue = Rc::new(RefCell::new(scan_directory("TestMusicFiles")));
+
     let play_queue_last = Rc::clone(&play_queue);
     let play_queue_next = Rc::clone(&play_queue);
 
     let current_song_index = Rc::new(RefCell::new(0usize));
     let index_next_pointer = Rc::clone(&current_song_index);
     let index_last_pointer = Rc::clone(&current_song_index);
+
+    make_queue_list_frames(queue_list, &play_queue.borrow().clone());
     //const TESTMP3PATH: &str = "TestMusicFiles/07 Alright.mp3";
     // Get an output steam handle to the default physical sound device
     // Note that no sound will be played if _stream is droppped;
@@ -91,7 +94,13 @@ fn main() {
     app.run().unwrap();
 }
 
-fn list_queue(play_queue: &Vec<String>, current_song_index: usize) {
+fn make_queue_list_frames(mut queue_list_box: Flex, play_queue: &Vec<String>) {
+    for path in play_queue {
+        let new_frame = Frame::default().with_label(path);
+        queue_list_box.add(&new_frame);
+    }
+}
+fn _list_queue(play_queue: &Vec<String>, current_song_index: usize) {
     let mut i: i32 = 0;
     let mut print_string: String = String::from("");
     for song_name in play_queue {
