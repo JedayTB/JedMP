@@ -1,0 +1,11 @@
+[package]
+name = "JedRMP"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fltk ={version ="1.5.9", features = ["fltk-bundled"]} 
+fltk-theme = "0.7.9"
+rodio = "0.20.1"
+
+
