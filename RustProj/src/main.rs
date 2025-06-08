@@ -1,11 +1,14 @@
-use fltk::{app, button::Button, frame::Frame, group::Flex, prelude::*, window::Window};
-use fltk_theme::{ColorTheme, color_themes, widget_schemes};
+use fltk::{app, button::Button, enums::Align, group::Flex, prelude::*, window::Window};
+use fltk_theme::{ColorTheme, color_themes};
 use rodio::{Decoder, OutputStream, Sink};
+use song_indentifier::SongIdentifier;
 use std::cell::RefCell;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::rc::Rc;
+
+mod song_indentifier;
 fn main() {
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
     let theme = ColorTheme::new(color_themes::BLACK_THEME);
@@ -14,10 +17,10 @@ fn main() {
     let mut wind = Window::new(0, 0, 680, 360, "JedMP");
     let queue_list = Flex::default()
         .column()
-        .with_size(65, 300)
-        .left_of(&wind, -70);
-    let _frame = Frame::default().with_label("Test");
+        .with_size(500, 300)
+        .left_of(&wind, -500);
 
+    //let si = SongIdentifier::new(30, 30, "balls", Align::Right);
     queue_list.end();
 
     let mut button_box = Flex::default()
@@ -94,10 +97,14 @@ fn main() {
     app.run().unwrap();
 }
 
+//let si = SongIdentifier::new(30, 30, "balls", Align::Right);
 fn make_queue_list_frames(mut queue_list_box: Flex, play_queue: &Vec<String>) {
     for path in play_queue {
-        let new_frame = Frame::default().with_label(path);
-        queue_list_box.add(&new_frame);
+        let _path = path.split("/");
+        let songname = _path.collect::<Vec<&str>>();
+        let si = SongIdentifier::new(100, 30, songname[1], Align::Right);
+
+        queue_list_box.add(&*si);
     }
 }
 fn _list_queue(play_queue: &Vec<String>, current_song_index: usize) {
