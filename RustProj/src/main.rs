@@ -1,44 +1,57 @@
-use fltk::{app, button::Button, enums::Align, group::Flex, prelude::*, window::Window};
+use fltk::{
+    app, button::Button, enums::*, group::Flex, prelude::*, widget::Widget, window::Window,
+};
 use fltk_theme::{ColorTheme, color_themes};
 use rodio::{Decoder, OutputStream, Sink};
-use song_indentifier::SongIdentifier;
+use song_identifier::SongIdentifier;
 use std::cell::RefCell;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::rc::Rc;
 
-mod song_indentifier;
+mod song_identifier;
 fn main() {
-    let app = app::App::default().with_scheme(app::Scheme::Gtk);
+    let app = app::App::default().with_scheme(app::Scheme::Oxy);
     let theme = ColorTheme::new(color_themes::BLACK_THEME);
     theme.apply();
+    let base_window_width = 896;
+    let base_window_height = 504;
 
-    let mut wind = Window::new(0, 0, 680, 360, "JedMP");
-    let queue_list = Flex::default()
+    let mut wind = Window::new(0, 0, base_window_width, base_window_height, "JedMP");
+
+    let queue_list_width = 500;
+    let queue_list_height = 300;
+
+    let queue_list_pos_x = 0;
+    let queue_list_pos_y = 0;
+    let mut queue_list = Flex::default()
         .column()
-        .with_size(500, 300)
-        .left_of(&wind, -500);
+        .with_size(queue_list_width, queue_list_height)
+        .with_pos(queue_list_pos_x, queue_list_pos_y);
 
-    //let si = SongIdentifier::new(30, 30, "balls", Align::Right);
+    queue_list.set_frame(FrameType::GtkDownFrame);
     queue_list.end();
 
+    let button_box_height = base_window_height / 8;
+    let button_box_width = base_window_width;
+    let button_box_pos_y = wind.h();
+    let button_box_pos_x = base_window_width / 2;
+    print!("{:?}", button_box_pos_x);
+
     let mut button_box = Flex::default()
-        .with_size(620, 45)
-        .row()
-        .below_of(&wind, -50);
+        .with_size(button_box_width, button_box_height)
+        .with_pos(
+            button_box_pos_x - button_box_width / 2,
+            button_box_pos_y - button_box_height,
+        )
+        .row();
 
     let mut last_song_button = Button::default().with_label("<");
     let mut pause_song_button = Button::default().with_label("Pause");
     let mut next_song_button = Button::default().with_label(">");
 
     button_box.end();
-
-    let button_box_padding_from_queue_list = 40;
-    let new_button_box_x = queue_list.x() + button_box_padding_from_queue_list;
-    let new_button_box_y = button_box.y();
-
-    button_box.set_pos(new_button_box_x, new_button_box_y);
 
     let play_queue = Rc::new(RefCell::new(scan_directory("TestMusicFiles")));
 
@@ -92,11 +105,22 @@ fn main() {
         }
     });
     wind.end();
+    //wind.make_resizable(true);
     wind.show();
-
+    // Current widgets to resize:
+    // Button box : back_but, pause / play but, next_but
+    // Queue list : All song_identifier's
+    /*
+    wind.handle(move |window, ev: Event| match ev {
+        Event::Resize => {
+            println!("new size w: {:?}, h: {:?}", window.w(), window.h());
+            true
+        }
+        _ => false,
+    });
+    */
     app.run().unwrap();
 }
-
 //let si = SongIdentifier::new(30, 30, "balls", Align::Right);
 fn make_queue_list_frames(mut queue_list_box: Flex, play_queue: &Vec<String>) {
     for path in play_queue {
