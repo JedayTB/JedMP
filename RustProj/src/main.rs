@@ -1,24 +1,84 @@
-use fltk::{
-    app, button::Button, enums::*, group::Flex, prelude::*, widget::Widget, window::Window,
-};
+use fltk::dialog;
+use fltk::{app, button::Button, enums::*, group::Flex, prelude::*, window::Window};
 use fltk_theme::{ColorTheme, color_themes};
 use rodio::{Decoder, OutputStream, Sink};
 use song_identifier::SongIdentifier;
 use std::cell::RefCell;
+use std::env;
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::PathBuf;
 use std::rc::Rc;
 
+// Modules
+mod init_app_gui;
 mod song_identifier;
+// Rename to app_gui
+use crate::init_app_gui::gui_init;
 fn main() {
+    gui_init::test();
+    // CMD Args handling
+    let args: Vec<String> = env::args().collect();
+    for cmd_args in args {
+        if cmd_args == "r" {
+            // Redo first init logic here
+        }
+    }
+    let username_string = whoami::username();
+
+    let jedmp_directory = format!("/home/{username_string}/.jedmp");
+
+    let pathb = PathBuf::from(&jedmp_directory);
+    match pathb.try_exists() {
+        Ok(t) => {
+            if t == false {
+                println!("Jed MP Folder does not exist. Creating and populating...");
+                match fs::create_dir(jedmp_directory) {
+                    Ok(_o) => {
+                        // Yay..
+                    }
+                    Err(e) => {
+                        eprintln!("Error Occured trying to create directory. {e}");
+                    }
+                }
+
+                // Do my logic here.
+            } else {
+                // Load Cached values..
+                println!("Loading cached values...");
+            }
+        }
+        Err(e) => {
+            eprintln!("{e} The hell happened?")
+        }
+    }
+    // GUI Stuff
     let app = app::App::default().with_scheme(app::Scheme::Oxy);
-    let theme = ColorTheme::new(color_themes::BLACK_THEME);
+    let theme = ColorTheme::new(color_themes::TAN_THEME);
     theme.apply();
     let base_window_width = 896;
     let base_window_height = 504;
 
+    let general_y_pad = 10;
+    //let general_x_pad = 15;
+
     let mut wind = Window::new(0, 0, base_window_width, base_window_height, "JedMP");
+
+    let top_bar_height = 25;
+
+    // Top Bar
+    let mut top_bar_group = Flex::default()
+        .with_size(base_window_width, top_bar_height)
+        .with_pos(0, 0);
+
+    top_bar_group.set_frame(FrameType::GtkDownFrame);
+
+    let mut add_music_directory_button = Button::default()
+        .with_size(base_window_width / 12, top_bar_height)
+        .with_label("Choose Music directory");
+
+    top_bar_group.end();
 
     let queue_list_width = 500;
     let queue_list_height = 300;
@@ -28,7 +88,10 @@ fn main() {
     let mut queue_list = Flex::default()
         .column()
         .with_size(queue_list_width, queue_list_height)
-        .with_pos(queue_list_pos_x, queue_list_pos_y);
+        .with_pos(
+            queue_list_pos_x,
+            queue_list_pos_y + general_y_pad + top_bar_height,
+        );
 
     queue_list.set_frame(FrameType::GtkDownFrame);
     queue_list.end();
@@ -37,9 +100,8 @@ fn main() {
     let button_box_width = base_window_width;
     let button_box_pos_y = wind.h();
     let button_box_pos_x = base_window_width / 2;
-    print!("{:?}", button_box_pos_x);
 
-    let mut button_box = Flex::default()
+    let button_box = Flex::default()
         .with_size(button_box_width, button_box_height)
         .with_pos(
             button_box_pos_x - button_box_width / 2,
@@ -104,24 +166,58 @@ fn main() {
             btn.set_label("Play");
         }
     });
+
+    add_music_directory_button.set_callback(move |_| {
+        let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
+        nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
+        match nfc.try_show() {
+            Err(e) => {
+                eprintln!("{}", e);
+                //None
+            }
+            Ok(a) => match a {
+                dialog::NativeFileChooserAction::Success => {
+                    let directory = nfc.filename();
+                    println!("{:?}", directory);
+                }
+                dialog::NativeFileChooserAction::Cancelled => {
+                    println!("Directory Pick cancelled");
+                }
+            },
+        }
+    });
     wind.end();
     //wind.make_resizable(true);
     wind.show();
-    // Current widgets to resize:
-    // Button box : back_but, pause / play but, next_but
-    // Queue list : All song_identifier's
-    /*
-    wind.handle(move |window, ev: Event| match ev {
-        Event::Resize => {
-            println!("new size w: {:?}, h: {:?}", window.w(), window.h());
-            true
-        }
-        _ => false,
-    });
-    */
     app.run().unwrap();
 }
-//let si = SongIdentifier::new(30, 30, "balls", Align::Right);
+
+fn proccess_chosen_directory(dir_path: &str) {
+    // Scans for files in the given directory.
+    let pathsindir = fs::read_dir(dir_path).unwrap();
+    //let mut plqueue: Vec<String> = Vec::new();
+    for path in pathsindir {
+        let mut pathb = PathBuf::new();
+        let pathstr = path.unwrap().path().display().to_string();
+        pathb.push(&pathstr);
+
+        if pathb.is_dir() {
+            scan_directory(&pathstr);
+        } else if pathb.is_file() {
+        }
+        //fs::metadata(path).map_errO;
+    }
+}
+fn scan_directory(dir_path: &str) -> Vec<String> {
+    // Scans for files in the given directory.
+    let pathsindir = fs::read_dir(dir_path).unwrap();
+    let mut plqueue: Vec<String> = Vec::new();
+    for path in pathsindir {
+        //println!("Name: {}", path.unwrap().path().display());
+        plqueue.push(path.unwrap().path().display().to_string());
+    }
+    return plqueue;
+}
 fn make_queue_list_frames(mut queue_list_box: Flex, play_queue: &Vec<String>) {
     for path in play_queue {
         let _path = path.split("/");
@@ -142,7 +238,7 @@ fn _list_queue(play_queue: &Vec<String>, current_song_index: usize) {
         }
         print_string.push_str("\n");
     }
-    println!("{}", print_string);
+    //println!("{}", print_string);
 }
 fn back_a_song(sink: &Sink, play_queue: &Vec<String>, current_song_index: usize) -> usize {
     let mut new_ind: usize = current_song_index;
@@ -173,14 +269,4 @@ fn next_song_in_queue(sink: &Sink, play_queue: &Vec<String>, current_song_index:
     sink.play();
 
     return new_ind;
-}
-fn scan_directory(dir_path: &str) -> Vec<String> {
-    // Scans for files in the given directory.
-    let pathsindir = fs::read_dir(dir_path).unwrap();
-    let mut plqueue: Vec<String> = Vec::new();
-    for path in pathsindir {
-        //println!("Name: {}", path.unwrap().path().display());
-        plqueue.push(path.unwrap().path().display().to_string());
-    }
-    return plqueue;
 }
