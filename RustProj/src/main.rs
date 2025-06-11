@@ -6,9 +6,9 @@ use rodio::{Decoder, OutputStream, Sink};
 use song_identifier::SongIdentifier;
 use std::cell::RefCell;
 use std::env;
-use std::fs;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::fs::{self, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -38,40 +38,9 @@ fn main() {
         }
     }
 
-    let pathb = PathBuf::from(&jedmp_directory);
-    let mut cachedfiles: File;
-    let cachedfiles_path_str = format!("{jedmp_directory}/music_cache");
-    let mut make_queue_list_on_startup: bool = true;
-    match pathb.try_exists() {
-        Ok(t) => {
-            if t == false {
-                println!("Jed MP Folder does not exist. Creating and populating...");
-                match fs::create_dir(&jedmp_directory) {
-                    Ok(_o) => {
-                        println!("Jed MP Directory created.");
-                    }
-                    Err(e) => {
-                        eprintln!("Error Occured trying to create directory. {e}");
-                    }
-                }
-
-                // Do my logic here.
-                cachedfiles = File::create(&cachedfiles_path_str).unwrap();
-                make_queue_list_on_startup = false;
-                print!("Created cachedfiles.. file");
-            } else {
-                // Load Cached values..
-                make_queue_list_on_startup = true;
-                println!("Loading cached values...");
-            }
-        }
-        Err(e) => {
-            make_queue_list_on_startup = false;
-            eprintln!("{e} The hell happened?");
-            panic!();
-        }
-    }
     // GUI Stuff
+    //
+    // GUI Element creation and positioning
     let app = app::App::default().with_scheme(app::Scheme::Oxy);
     let theme = ColorTheme::new(color_themes::TAN_THEME);
     theme.apply();
@@ -111,8 +80,9 @@ fn main() {
             queue_list_pos_y + general_y_pad + top_bar_height,
         );
 
-    let shared_queue_list = Rc::new(RefCell::new(&queue_list));
     queue_list.set_frame(FrameType::GtkDownFrame);
+
+    let shared_queue_list = Rc::new(RefCell::new(queue_list.clone()));
     queue_list.end();
 
     let button_box_height = base_window_height / 8;
@@ -134,23 +104,59 @@ fn main() {
 
     button_box.end();
 
+    // GUI state variables creation
     let mut play_queue: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    let mut play_queue_last: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    let mut play_queue_next: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
+    let mut play_queue_last: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
+    let mut play_queue_next: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
+    let pause_play_play_queue: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
 
     let mut current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-    let mut index_next_pointer: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-    let mut index_last_pointer: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
+    let mut index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
+    let mut index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
+    let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
-    if make_queue_list_on_startup {
-        println!("Loading music..");
-        play_queue = Rc::new(RefCell::new(load_cached_songs(&cachedfiles_path_str)));
-        play_queue_last = Rc::clone(&play_queue);
-        play_queue_next = Rc::clone(&play_queue);
-        current_song_index = Rc::new(RefCell::new(0usize));
+    let pathb = PathBuf::from(&jedmp_directory);
+    let mut _cachedfiles: File;
+    let cachedfiles_path_str = format!("{jedmp_directory}/music_cache");
 
-        index_next_pointer = Rc::clone(&current_song_index);
-        index_last_pointer = Rc::clone(&current_song_index);
+    match pathb.try_exists() {
+        Ok(t) => {
+            if t == false {
+                println!("Jed MP Folder does not exist. Creating and populating...");
+                match fs::create_dir(&jedmp_directory) {
+                    Ok(_o) => {
+                        println!("Jed MP Directory created.");
+                    }
+                    Err(e) => {
+                        eprintln!("Error Occured trying to create directory. {e}");
+                    }
+                }
+
+                // Do my logic here.
+                _cachedfiles = File::create(&cachedfiles_path_str).unwrap();
+                print!("Created cachedfiles.. file");
+            } else {
+                println!("Cached Music Found, Loading values...");
+                // Load Cached values..
+                println!("Loading music..");
+                play_queue = Rc::new(RefCell::new(load_cached_songs(&cachedfiles_path_str)));
+                play_queue_last = Rc::clone(&play_queue);
+                play_queue_next = Rc::clone(&play_queue);
+                current_song_index = Rc::new(RefCell::new(0usize));
+
+                index_next_pointer = Rc::clone(&current_song_index);
+                index_last_pointer = Rc::clone(&current_song_index);
+
+                make_queue_list_frames(
+                    &mut *shared_queue_list.borrow_mut(),
+                    &play_queue.borrow().clone(),
+                );
+            }
+        }
+        Err(e) => {
+            eprintln!("{e} The hell happened?");
+            panic!();
+        }
     }
     //make_queue_list_frames(queue_list, &play_queue.borrow().clone());
     //const TESTMP3PATH: &str = "TestMusicFiles/07 Alright.mp3";
@@ -190,6 +196,17 @@ fn main() {
     });
 
     pause_song_button.set_callback(move |btn| {
+        if sink.borrow().empty() {
+            let ind: usize = *pause_play_index.borrow();
+            let path = &pause_play_play_queue.borrow()[ind].clone();
+            let next_song = BufReader::new(File::open(path).unwrap());
+            let source = Decoder::new(next_song).unwrap();
+            // Stops playback and clears all appened files
+            sink.borrow().stop();
+            sink.borrow().append(source);
+            sink.borrow().play();
+        }
+
         if sink_pause.borrow().is_paused() {
             sink.borrow().play();
             btn.set_label("Pause");
@@ -214,8 +231,11 @@ fn main() {
                         .to_str()
                         .expect("Directory doesn't have a string name?..");
                     proccess_chosen_directory(strname, &cachedfiles_path_str);
-                    play_queue = Rc::new(RefCell::new(load_cached_songs(&cachedfiles_path_str)));
-                    make_queue_list_frames(*shared_queue_list, &play_queue.borrow().clone());
+                    *play_queue.borrow_mut() = load_cached_songs(&cachedfiles_path_str);
+                    make_queue_list_frames(
+                        &mut *shared_queue_list.borrow_mut(),
+                        &play_queue.borrow().clone(),
+                    );
                 }
                 dialog::NativeFileChooserAction::Cancelled => {
                     println!("Directory Pick cancelled");
@@ -228,23 +248,30 @@ fn main() {
     wind.show();
     app.run().unwrap();
 }
-
+/// Scans A Directory and appends the path of the files into the music_cache file.
 fn proccess_chosen_directory(dir_path: &str, cached_songs_path: &str) {
-    // Scans for files in the given directory.
     let pathsindir = fs::read_dir(dir_path).unwrap();
-    //let mut plqueue: Vec<String> = Vec::new();
+    let mut music_cache_file = OpenOptions::new()
+        .append(true)
+        .open(cached_songs_path)
+        .expect("Couldn't open music_cache");
+
     for path in pathsindir {
         let mut pathb = PathBuf::new();
         let pathstr = path.unwrap().path().display().to_string();
         pathb.push(&pathstr);
 
         if pathb.is_dir() {
+            println!(
+                "Encountered secondary directory {:?}: Scanning and caching",
+                pathstr
+            );
             scan_directory_to_cached_songs(&pathstr, cached_songs_path);
         } else if pathb.is_file() {
             println!("Writing {:?}", pathstr);
-            fs::write(cached_songs_path, pathstr).expect("Couldn't write.")
+            //let song_path_str = format!("{}\n", pathstr);
+            writeln!(music_cache_file, "{}", pathstr).expect("Write failed.");
         }
-        //fs::metadata(path).map_errO;
     }
 }
 fn scan_directory_to_cached_songs(dir_path: &str, cached_songs_path: &str) {
@@ -262,7 +289,6 @@ fn load_cached_songs(cached_songs_path: &str) -> Vec<String> {
         File::open(cached_songs_path).expect("Couldn't read cached_songs file.");
     let c_metadata = cached_music_file.metadata().expect("File has no metadata?");
     let cached_music_file_length = c_metadata.len();
-    println!("{cached_music_file_length}");
 
     if cached_music_file_length == 0 {
         println!("There's no cached music! Choose a directory to load.");
@@ -278,12 +304,12 @@ fn load_cached_songs(cached_songs_path: &str) -> Vec<String> {
 
     return queue_list;
 }
-fn make_queue_list_frames(mut queue_list_box: &Flex, play_queue: &Vec<String>) {
+fn make_queue_list_frames(queue_list_box: &mut Flex, play_queue: &Vec<String>) {
     for path in play_queue {
-        let _path = path.split("/");
-        let songname = _path.collect::<Vec<&str>>();
-        let si = SongIdentifier::new(100, 30, songname[1], Align::Right);
-
+        //let _path = path.split("/");
+        //let songname = _path.collect::<Vec<&str>>();
+        let si = SongIdentifier::new(100, 30, path, Align::Right);
+        println!("added new song identifier {:?}", path);
         queue_list_box.add(&*si);
     }
 }
