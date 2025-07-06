@@ -4,7 +4,7 @@ I couldn't find a music player I liked on linux. So,I decided to make an open so
 This is mostly a learning project for me (Jeday) to learn rust. But making a good music player is also cool
 
 ## TODO
-Most recent TODO update - 2025-06-10 11:20 pm EST
+Most recent TODO update - 2025-07-06 5:42 pm EST
 
 RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only handle by symphonia)
 

@@ -1,35 +1,29 @@
-use core::panic;
-use fltk::dialog;
-use fltk::{app, button::Button, enums::*, group::Flex, prelude::*, window::Window};
-use fltk_theme::{ColorTheme, color_themes};
-use rodio::{Decoder, OutputStream, Sink};
-use song_identifier::SongIdentifier;
-use std::cell::RefCell;
+// Modules
+pub mod gui_state_controller;
+pub mod music_cache_handler;
+pub mod song_identifier;
+
 use std::env;
 use std::fs::File;
 use std::fs::{self, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+
+use rodio::{Decoder, Sink};
+use std::io::{BufReader, Write};
 use std::path::PathBuf;
-use std::rc::Rc;
 
-// Modules
-mod init_app_gui;
-mod song_identifier;
-// Rename to app_gui
-use crate::init_app_gui::gui_init;
+use crate::gui_state_controller::gui_controller;
+
 fn main() {
-    gui_init::test();
-    let username_string = whoami::username();
+    // For mostly debugging.
 
-    let jedmp_directory = format!("/home/{username_string}/.jedmp");
-
+    let jedmpdir = get_jedmp_dir();
     // CMD Args handling
     let args: Vec<String> = env::args().collect();
     for cmd_args in args {
         if cmd_args == "r" {
             // Redo first init logic here
             println!("Argument r found, removing jedmp_directory for testing.");
-            match fs::remove_dir_all(&jedmp_directory) {
+            match fs::remove_dir_all(&jedmpdir) {
                 Ok(_r) => {}
                 Err(e) => {
                     eprintln!("Error occured! {e}");
@@ -38,215 +32,16 @@ fn main() {
         }
     }
 
-    // GUI Stuff
-    //
-    // GUI Element creation and positioning
-    let app = app::App::default().with_scheme(app::Scheme::Oxy);
-    let theme = ColorTheme::new(color_themes::TAN_THEME);
-    theme.apply();
-    let base_window_width = 896;
-    let base_window_height = 504;
+    gui_controller::open_window();
+}
+fn get_jedmp_dir() -> String {
+    let username_string = whoami::username();
 
-    let general_y_pad = 10;
-    //let general_x_pad = 15;
-
-    let mut wind = Window::new(0, 0, base_window_width, base_window_height, "JedMP");
-
-    let top_bar_height = 25;
-
-    // Top Bar
-    let mut top_bar_group = Flex::default()
-        .with_size(base_window_width, top_bar_height)
-        .with_pos(0, 0);
-
-    top_bar_group.set_frame(FrameType::GtkDownFrame);
-
-    let mut add_music_directory_button = Button::default()
-        .with_size(base_window_width / 12, top_bar_height)
-        .with_label("Choose Music directory");
-
-    top_bar_group.end();
-
-    let queue_list_width = 500;
-    let queue_list_height = 300;
-
-    let queue_list_pos_x = 0;
-    let queue_list_pos_y = 0;
-    let mut queue_list = Flex::default()
-        .column()
-        .with_size(queue_list_width, queue_list_height)
-        .with_pos(
-            queue_list_pos_x,
-            queue_list_pos_y + general_y_pad + top_bar_height,
-        );
-
-    queue_list.set_frame(FrameType::GtkDownFrame);
-
-    let shared_queue_list = Rc::new(RefCell::new(queue_list.clone()));
-    queue_list.end();
-
-    let button_box_height = base_window_height / 8;
-    let button_box_width = base_window_width;
-    let button_box_pos_y = wind.h();
-    let button_box_pos_x = base_window_width / 2;
-
-    let button_box = Flex::default()
-        .with_size(button_box_width, button_box_height)
-        .with_pos(
-            button_box_pos_x - button_box_width / 2,
-            button_box_pos_y - button_box_height,
-        )
-        .row();
-
-    let mut last_song_button = Button::default().with_label("<");
-    let mut pause_song_button = Button::default().with_label("Pause");
-    let mut next_song_button = Button::default().with_label(">");
-
-    button_box.end();
-
-    // GUI state variables creation
-    let mut play_queue: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    let mut play_queue_last: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-    let mut play_queue_next: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-    let pause_play_play_queue: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-
-    let mut current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-    let mut index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-    let mut index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-    let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-
-    let pathb = PathBuf::from(&jedmp_directory);
-    let mut _cachedfiles: File;
-    let cachedfiles_path_str = format!("{jedmp_directory}/music_cache");
-
-    match pathb.try_exists() {
-        Ok(t) => {
-            if t == false {
-                println!("Jed MP Folder does not exist. Creating and populating...");
-                match fs::create_dir(&jedmp_directory) {
-                    Ok(_o) => {
-                        println!("Jed MP Directory created.");
-                    }
-                    Err(e) => {
-                        eprintln!("Error Occured trying to create directory. {e}");
-                    }
-                }
-
-                // Do my logic here.
-                _cachedfiles = File::create(&cachedfiles_path_str).unwrap();
-                print!("Created cachedfiles.. file");
-            } else {
-                println!("Cached Music Found, Loading values...");
-                // Load Cached values..
-                println!("Loading music..");
-                play_queue = Rc::new(RefCell::new(load_cached_songs(&cachedfiles_path_str)));
-                play_queue_last = Rc::clone(&play_queue);
-                play_queue_next = Rc::clone(&play_queue);
-                current_song_index = Rc::new(RefCell::new(0usize));
-
-                index_next_pointer = Rc::clone(&current_song_index);
-                index_last_pointer = Rc::clone(&current_song_index);
-
-                make_queue_list_frames(
-                    &mut *shared_queue_list.borrow_mut(),
-                    &play_queue.borrow().clone(),
-                );
-            }
-        }
-        Err(e) => {
-            eprintln!("{e} The hell happened?");
-            panic!();
-        }
-    }
-    //make_queue_list_frames(queue_list, &play_queue.borrow().clone());
-    //const TESTMP3PATH: &str = "TestMusicFiles/07 Alright.mp3";
-    // Get an output steam handle to the default physical sound device
-    // Note that no sound will be played if _stream is droppped;
-    // Stream must live as long as sink
-
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    let sink = Rc::new(RefCell::new(Sink::try_new(&stream_handle).unwrap()));
-    let sink_pause = Rc::clone(&sink);
-    let sink_next = Rc::clone(&sink);
-    let sink_last = Rc::clone(&sink);
-    // load a sound from a file, using a path relative to cargo.toml
-
-    // Append first song in playqueue if not empty.
-    // Remove during next refactor - 2025-06-10
-    if play_queue.borrow().len() != 0 {
-        let file = BufReader::new(File::open(play_queue.borrow()[0].clone()).unwrap());
-        // Decode that sound file into a source
-        let source = Decoder::new(file).unwrap();
-        // Sink has weird behavior where it will play
-        // song after having it be appended
-        sink.borrow().append(source);
-        sink.borrow().pause();
-    }
-
-    last_song_button.set_callback(move |_| {
-        let curr_ind = *index_last_pointer.borrow();
-        let new_ind = back_a_song(&sink_last.borrow(), &play_queue_last.borrow(), curr_ind);
-        *index_last_pointer.borrow_mut() = new_ind;
-    });
-
-    next_song_button.set_callback(move |_| {
-        let curr_ind = *index_next_pointer.borrow();
-        let new_ind = next_song_in_queue(&sink_next.borrow(), &play_queue_next.borrow(), curr_ind);
-        *index_next_pointer.borrow_mut() = new_ind;
-    });
-
-    pause_song_button.set_callback(move |btn| {
-        if sink.borrow().empty() {
-            let ind: usize = *pause_play_index.borrow();
-            let path = &pause_play_play_queue.borrow()[ind].clone();
-            let next_song = BufReader::new(File::open(path).unwrap());
-            let source = Decoder::new(next_song).unwrap();
-            // Stops playback and clears all appened files
-            sink.borrow().stop();
-            sink.borrow().append(source);
-            sink.borrow().play();
-        }
-
-        if sink_pause.borrow().is_paused() {
-            sink.borrow().play();
-            btn.set_label("Pause");
-        } else {
-            sink_pause.borrow().pause();
-            btn.set_label("Play");
-        }
-    });
-
-    add_music_directory_button.set_callback(move |_| {
-        let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
-        nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
-        match nfc.try_show() {
-            Err(e) => {
-                eprintln!("{}", e);
-                //None
-            }
-            Ok(a) => match a {
-                dialog::NativeFileChooserAction::Success => {
-                    let directory = nfc.filename();
-                    let strname = directory
-                        .to_str()
-                        .expect("Directory doesn't have a string name?..");
-                    proccess_chosen_directory(strname, &cachedfiles_path_str);
-                    *play_queue.borrow_mut() = load_cached_songs(&cachedfiles_path_str);
-                    make_queue_list_frames(
-                        &mut *shared_queue_list.borrow_mut(),
-                        &play_queue.borrow().clone(),
-                    );
-                }
-                dialog::NativeFileChooserAction::Cancelled => {
-                    println!("Directory Pick cancelled");
-                }
-            },
-        }
-    });
-    wind.end();
-    //wind.make_resizable(true);
-    wind.show();
-    app.run().unwrap();
+    return format!("/home/{username_string}/.jedmp");
+}
+fn get_jedmp_musiccache_path() -> String {
+    let jedmpdir = get_jedmp_dir();
+    return format!("{jedmpdir}/music_cache");
 }
 /// Scans A Directory and appends the path of the files into the music_cache file.
 fn proccess_chosen_directory(dir_path: &str, cached_songs_path: &str) {
@@ -283,36 +78,7 @@ fn scan_directory_to_cached_songs(dir_path: &str, cached_songs_path: &str) {
         fs::write(cached_songs_path, song_path).expect("Couldn't write.");
     }
 }
-fn load_cached_songs(cached_songs_path: &str) -> Vec<String> {
-    let mut queue_list: Vec<String> = Vec::new();
-    let cached_music_file =
-        File::open(cached_songs_path).expect("Couldn't read cached_songs file.");
-    let c_metadata = cached_music_file.metadata().expect("File has no metadata?");
-    let cached_music_file_length = c_metadata.len();
 
-    if cached_music_file_length == 0 {
-        println!("There's no cached music! Choose a directory to load.");
-    }
-
-    let buf_reader = BufReader::new(cached_music_file);
-    let string_it = buf_reader.lines();
-
-    for lines in string_it {
-        let song_path = lines.expect("Couldn't read song paths.");
-        queue_list.push(song_path);
-    }
-
-    return queue_list;
-}
-fn make_queue_list_frames(queue_list_box: &mut Flex, play_queue: &Vec<String>) {
-    for path in play_queue {
-        //let _path = path.split("/");
-        //let songname = _path.collect::<Vec<&str>>();
-        let si = SongIdentifier::new(100, 30, path, Align::Right);
-        println!("added new song identifier {:?}", path);
-        queue_list_box.add(&*si);
-    }
-}
 fn _list_queue(play_queue: &Vec<String>, current_song_index: usize) {
     let mut i: i32 = 0;
     let mut print_string: String = String::from("");
