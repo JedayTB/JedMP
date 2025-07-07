@@ -82,15 +82,15 @@ pub mod gui_controller {
         // GUI state variables creation
         // FIXME:
         // Fix later to include false condition
-        let mut play_queue: Rc<RefCell<Vec<String>>> =
+        let play_queue: Rc<RefCell<Vec<String>>> =
             music_file_handler::try_load_cached_music().expect("Balls");
-        let mut play_queue_last: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-        let mut play_queue_next: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
+        let play_queue_last: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
+        let play_queue_next: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
         let pause_play_play_queue: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
 
-        let mut current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-        let mut index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-        let mut index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
+        let current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
+        let index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
+        let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
         make_queue_list_frames(&mut queue_list, &play_queue.borrow().clone());

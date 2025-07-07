@@ -12,7 +12,7 @@ pub mod music_file_handler {
 
     use crate::get_jedmp_dir;
     use crate::get_jedmp_musiccache_path;
-
+    use crate::song_file_metadata_handler::*;
     pub fn load_path(path_to_song: &String) -> Decoder<BufReader<File>> {
         let f = File::open(path_to_song);
         let file = BufReader::new(f.unwrap());
@@ -79,19 +79,6 @@ pub mod music_file_handler {
 
             *play_queue.borrow_mut() = load_cached_songs();
             loadedcachedsongs = true;
-
-            /*make_queue_list_frames(
-                           &mut *shared_queue_list.borrow_mut(),
-                           &play_queue.borrow().clone(),
-            play_queue_last = Rc::clone(&play_queue);
-                       play_queue_next = Rc::clone(&play_queue);
-                       current_song_index = Rc::new(RefCell::new(0usize));
-
-                       index_next_pointer = Rc::clone(&current_song_index);
-                       index_last_pointer = Rc::clone(&current_song_index);
-
-                       );
-                       */
         }
         if loadedcachedsongs {
             Ok(play_queue)
@@ -100,6 +87,8 @@ pub mod music_file_handler {
         }
     }
 
+    // TODO:
+    // Change this function to return a Result with String Vec
     pub fn load_cached_songs() -> Vec<String> {
         let cached_songs_path = &get_jedmp_musiccache_path();
         let mut queue_list: Vec<String> = Vec::new();
@@ -111,16 +100,17 @@ pub mod music_file_handler {
         if cached_music_file_length == 0 {
             println!("There's no cached music! Choose a directory to load.");
         }
-
         let buf_reader = BufReader::new(cached_music_file);
         let string_it = buf_reader.lines();
 
         for lines in string_it {
             let song_path = lines.expect("Couldn't read song paths.");
-            queue_list.push(song_path);
+            let song_name = song_file_metadata_handler::get_song_title(&song_path);
+            println!("Song found: name {:?}", song_name);
+            queue_list.push(song_name);
         }
 
         // Rust why?
-        queue_list
+        return queue_list;
     }
 }

@@ -40,7 +40,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 There are multiple dependencies, but, this project uses cargo to handle them. For each dependency listed, do\
-
+This may be unecessary as, the cargo.toml in the repo has these included.
 
 ```
 cargo install {dependency_name}
@@ -50,3 +50,4 @@ cargo install {dependency_name}
 Rodio - Music playing\
 FLTK-RS - GUI\
 whoami - Getting information about user's system.\
+audiotags - Getting metadata info for mp3 and flac
