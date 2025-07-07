@@ -1,5 +1,6 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
+    use crate::play_queue_song::PlayQueueSong;
     use crate::song_identifier::SongIdentifier;
     use fltk::dialog;
     use fltk::group::Flex;
@@ -82,11 +83,11 @@ pub mod gui_controller {
         // GUI state variables creation
         // FIXME:
         // Fix later to include false condition
-        let play_queue: Rc<RefCell<Vec<String>>> =
+        let play_queue: Rc<RefCell<Vec<PlayQueueSong>>> =
             music_file_handler::try_load_cached_music().expect("Balls");
-        let play_queue_last: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-        let play_queue_next: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
-        let pause_play_play_queue: Rc<RefCell<Vec<String>>> = Rc::clone(&play_queue);
+        let play_queue_last: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
+        let play_queue_next: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
+        let pause_play_play_queue: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
 
         let current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
         let index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
@@ -94,7 +95,7 @@ pub mod gui_controller {
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
         make_queue_list_frames(&mut queue_list, &play_queue.borrow().clone());
-        //const TESTMP3PATH: &str = "TestMusicFiles/07 Alright.mp3";
+
         // Get an output steam handle to the default physical sound device
         // Note that no sound will be played if _stream is droppped;
         // Stream must live as long as sink
@@ -109,7 +110,7 @@ pub mod gui_controller {
         // Append first song in playqueue if not empty.
         // Remove during next refactor - 2025-06-10
         if play_queue.borrow().len() != 0 {
-            let source = music_file_handler::load_path(&play_queue.borrow()[0]);
+            let source = music_file_handler::load_path(&play_queue.borrow()[0].song_path);
             // Sink has weird behavior where it will play
             // song after having it be appended
             sink.borrow().append(source);
@@ -125,7 +126,7 @@ pub mod gui_controller {
 
             *index_last_pointer.borrow_mut() = curr_ind;
             let next_song_path = &play_queue_last.borrow()[curr_ind].clone();
-            let new_source = music_file_handler::load_path(next_song_path);
+            let new_source = music_file_handler::load_path(&next_song_path.song_path);
             sink_last.borrow().stop();
             sink_last.borrow().append(new_source);
             sink_last.borrow().play();
@@ -140,7 +141,7 @@ pub mod gui_controller {
 
             *index_next_pointer.borrow_mut() = curr_ind;
             let next_song_path = &play_queue_next.borrow()[curr_ind].clone();
-            let next_source = music_file_handler::load_path(next_song_path);
+            let next_source = music_file_handler::load_path(&next_song_path.song_path);
 
             sink_next.borrow().stop();
             sink_next.borrow().append(next_source);
@@ -151,7 +152,7 @@ pub mod gui_controller {
             if sink.borrow().empty() {
                 let ind: usize = *pause_play_index.borrow();
                 let path = &pause_play_play_queue.borrow()[ind].clone();
-                let source = music_file_handler::load_path(path);
+                let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
                 sink.borrow().stop();
                 sink.borrow().append(source);
@@ -202,12 +203,11 @@ pub mod gui_controller {
         wind.show();
         app.run().unwrap();
     }
-    fn make_queue_list_frames(queue_list_box: &mut Flex, play_queue: &Vec<String>) {
-        for path in play_queue {
+    fn make_queue_list_frames(queue_list_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
+        for song in play_queue {
             //let _path = path.split("/");
             //let songname = _path.collect::<Vec<&str>>();
-            let si = SongIdentifier::new(100, 30, path, fltk::enums::Align::Right);
-            println!("added new song identifier {:?}", path);
+            let si = SongIdentifier::new(100, 30, &song.song_title, fltk::enums::Align::Right);
             queue_list_box.add(&*si);
         }
     }

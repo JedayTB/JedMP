@@ -9,7 +9,10 @@ pub mod song_file_metadata_handler {
                 return result.unwrap().to_owned();
             }
             None => {
-                println!("File title invalid, File path: {:?}", song_path.clone());
+                println!(
+                    "Not sure why title breaks. Song Path: {:?}",
+                    song_path.clone()
+                );
                 return song_path.to_owned();
             }
         }

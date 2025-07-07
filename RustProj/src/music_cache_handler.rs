@@ -12,6 +12,7 @@ pub mod music_file_handler {
 
     use crate::get_jedmp_dir;
     use crate::get_jedmp_musiccache_path;
+    use crate::play_queue_song::PlayQueueSong;
     use crate::song_file_metadata_handler::*;
     pub fn load_path(path_to_song: &String) -> Decoder<BufReader<File>> {
         let f = File::open(path_to_song);
@@ -55,7 +56,7 @@ pub mod music_file_handler {
             fs::write(cached_songs_path, song_path).expect("Couldn't write.");
         }
     }
-    pub fn try_load_cached_music() -> Result<Rc<RefCell<Vec<String>>>, &'static str> {
+    pub fn try_load_cached_music() -> Result<Rc<RefCell<Vec<PlayQueueSong>>>, &'static str> {
         let jedmp_directory = get_jedmp_dir();
         let pathb = PathBuf::from(&jedmp_directory);
         let mut _cachedfiles: File;
@@ -64,7 +65,7 @@ pub mod music_file_handler {
         let m = pathb.try_exists();
         let r = m.expect("Path Exists");
         let mut loadedcachedsongs: bool = false;
-        let play_queue: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::default());
+        let play_queue: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::new(RefCell::default());
         if r == false {
             println!("Jed MP Folder does not exist. Creating and populating...");
             fs::create_dir(&jedmp_directory).expect("Jed MP Dir Created");
@@ -89,9 +90,9 @@ pub mod music_file_handler {
 
     // TODO:
     // Change this function to return a Result with String Vec
-    pub fn load_cached_songs() -> Vec<String> {
+    pub fn load_cached_songs() -> Vec<PlayQueueSong> {
         let cached_songs_path = &get_jedmp_musiccache_path();
-        let mut queue_list: Vec<String> = Vec::new();
+        let mut queue_list: Vec<PlayQueueSong> = Vec::new();
         let cached_music_file =
             File::open(cached_songs_path).expect("Couldn't read cached_songs file.");
         let c_metadata = cached_music_file.metadata().expect("File has no metadata?");
@@ -105,9 +106,10 @@ pub mod music_file_handler {
 
         for lines in string_it {
             let song_path = lines.expect("Couldn't read song paths.");
-            let song_name = song_file_metadata_handler::get_song_title(&song_path);
-            println!("Song found: name {:?}", song_name);
-            queue_list.push(song_name);
+            let song_title = song_file_metadata_handler::get_song_title(&song_path);
+            let plq_song = PlayQueueSong::new(song_path, song_title);
+
+            queue_list.push(plq_song);
         }
 
         // Rust why?
