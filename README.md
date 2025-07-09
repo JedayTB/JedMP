@@ -4,7 +4,7 @@ I couldn't find a music player I liked on linux. So,I decided to make an open so
 This is mostly a learning project for me (Jeday) to learn rust. But making a good music player is also cool
 
 ## TODO
-Most recent TODO update - 2025-07-07 4:25 pm EST
+Most recent TODO update - 2025-07-09 3:36 pm EST
 
 RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only handle by symphonia)
 
@@ -12,7 +12,6 @@ After words, Refactor into separate files to cleanup main.rs
 
 TODO List:
 
-- Song name support for wav and vorbis
 - Create play_queue, with functionality to change order of songs.
 - song_identifier frames display Song names instead of path to song
 - Song frames in music libraries have "Add to Queue" function
@@ -51,4 +50,4 @@ cargo install {dependency_name}
 Rodio - Music playing\
 FLTK-RS - GUI\
 whoami - Getting information about user's system.\
-audiotags - Getting metadata info for mp3 and flac
+libtags - Getting tag info from audio files
