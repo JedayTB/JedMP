@@ -2,13 +2,13 @@
 pub mod gui_state_controller;
 pub mod music_cache_handler;
 pub mod play_queue_song;
+pub mod popup_window;
 pub mod song_file_metadata_handler;
 pub mod song_identifier;
 use std::env;
 use std::fs;
 
 use crate::gui_state_controller::gui_controller;
-
 fn main() {
     // For mostly debugging.
 
@@ -30,6 +30,7 @@ fn main() {
 
     gui_controller::open_window();
 }
+
 fn get_jedmp_dir() -> String {
     let username_string = whoami::username();
 

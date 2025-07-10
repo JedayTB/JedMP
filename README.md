@@ -11,15 +11,13 @@ RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only
 After words, Refactor into separate files to cleanup main.rs
 
 TODO List:
-
-- Create play_queue, with functionality to change order of songs.
-- song_identifier frames display Song names instead of path to song
-- Song frames in music libraries have "Add to Queue" function
 - Music library view, scrollable 
   - Shuffle functions
   - Full Music library 
   - Artist separated library
     - Album separated by artist library
+- Create play_queue, with functionality to change order of songs.
+- Song frames in music libraries have "Add to Queue" function
 - Current playing song 
 - Better UI.
 

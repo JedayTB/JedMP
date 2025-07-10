@@ -1,6 +1,7 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
     use crate::play_queue_song::PlayQueueSong;
+    use crate::popup_window;
     use crate::song_identifier::SongIdentifier;
     use fltk::dialog;
     use fltk::group::Flex;
@@ -44,23 +45,23 @@ pub mod gui_controller {
 
         top_bar_group.end();
 
-        let queue_list_width = 500;
-        let queue_list_height = 300;
+        let library_list_width = 500;
+        let library_list_height = 300;
 
-        let queue_list_pos_x = 0;
-        let queue_list_pos_y = 0;
-        let mut queue_list = Flex::default()
+        let library_list_pos_x = 0;
+        let library_list_pos_y = 0;
+        let mut library_list = Flex::default()
             .column()
-            .with_size(queue_list_width, queue_list_height)
+            .with_size(library_list_width, library_list_height)
             .with_pos(
-                queue_list_pos_x,
-                queue_list_pos_y + general_y_pad + top_bar_height,
+                library_list_pos_x,
+                library_list_pos_y + general_y_pad + top_bar_height,
             );
 
-        queue_list.set_frame(FrameType::GtkDownFrame);
+        library_list.set_frame(FrameType::GtkDownFrame);
 
-        let shared_queue_list = Rc::new(RefCell::new(queue_list.clone()));
-        queue_list.end();
+        let shared_library_list = Rc::new(RefCell::new(library_list.clone()));
+        library_list.end();
 
         let button_box_height = base_window_height / 8;
         let button_box_width = base_window_width;
@@ -81,10 +82,11 @@ pub mod gui_controller {
 
         button_box.end();
         // GUI state variables creation
-        // FIXME:
-        // Fix later to include false condition
+
+        // WARNING
+        // Could lead to misaligned index when skipping, going back
         let play_queue: Rc<RefCell<Vec<PlayQueueSong>>> =
-            music_file_handler::try_load_cached_music().expect("Balls");
+            music_file_handler::try_load_cached_music().unwrap_or_default();
         let play_queue_last: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
         let play_queue_next: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
         let pause_play_play_queue: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
@@ -94,7 +96,7 @@ pub mod gui_controller {
         let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
-        make_queue_list_frames(&mut queue_list, &play_queue.borrow().clone());
+        make_queue_list_frames(&mut library_list, &play_queue.borrow().clone());
 
         // Get an output steam handle to the default physical sound device
         // Note that no sound will be played if _stream is droppped;
@@ -187,7 +189,7 @@ pub mod gui_controller {
                         *play_queue.borrow_mut() = music_file_handler::load_cached_songs();
 
                         make_queue_list_frames(
-                            &mut *shared_queue_list.borrow_mut(),
+                            &mut *shared_library_list.borrow_mut(),
                             &play_queue.borrow().clone(),
                         );
                     }

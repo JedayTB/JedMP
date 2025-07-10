@@ -88,8 +88,8 @@ pub mod music_file_handler {
         }
     }
 
-    // TODO:
-    // Change this function to return a Result with String Vec
+    // TODO
+    // Change this function to return a Result Vec<PlayQueueSong>
     pub fn load_cached_songs() -> Vec<PlayQueueSong> {
         let cached_songs_path = &get_jedmp_musiccache_path();
         let mut queue_list: Vec<PlayQueueSong> = Vec::new();
@@ -107,7 +107,6 @@ pub mod music_file_handler {
         for lines in string_it {
             let song_path = lines.expect("Couldn't read song paths.");
             let song_title = song_file_metadata_handler::get_song_title(&song_path);
-            dbg!(&song_title);
             let plq_song = PlayQueueSong::new(song_path, song_title);
 
             queue_list.push(plq_song);

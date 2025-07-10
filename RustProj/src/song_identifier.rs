@@ -1,5 +1,11 @@
-use fltk::{enums::Align, group::Flex, prelude::*, text::*, *};
-
+use crate::popup_window;
+use fltk::{
+    enums::{Align, Event},
+    group::Flex,
+    prelude::*,
+    text::*,
+    *,
+};
 // Add to group by using group.add(&*SongIdentifier), because it needs to be dereferenced
 pub struct SongIdentifier {
     group: Flex,
@@ -17,6 +23,22 @@ impl SongIdentifier {
         _song_name_text.set_frame(enums::FrameType::NoBox);
         group.set_align(alignment);
         group.set_frame(enums::FrameType::GtkUpBox);
+
+        group.handle(|widg, event| match event {
+            Event::Push => {
+                if app::event_mouse_button() == app::MouseButton::Right {
+                    let mx = app::event_x();
+                    let my = app::event_y();
+                    let lol = "Add To Queue,Insert Next,Filler";
+                    let parts: Vec<&str> = lol.split(",").collect();
+                    let _popwin =
+                        popup_window::popup_window::PopupWindow::new(50, &parts).with_pos(mx, my);
+                }
+                true
+            }
+            _ => false,
+        });
+        group.end();
         //let col = Color::from_rgb(100, 0, 100);
         SongIdentifier {
             group,
