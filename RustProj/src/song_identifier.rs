@@ -24,11 +24,11 @@ impl SongIdentifier {
         group.set_align(alignment);
         group.set_frame(enums::FrameType::GtkUpBox);
 
-        group.handle(|widg, event| match event {
+        group.handle(|_widg, event| match event {
             Event::Push => {
                 if app::event_mouse_button() == app::MouseButton::Right {
-                    let mx = app::event_x();
-                    let my = app::event_y();
+                    let mx = app::event_x_root();
+                    let my = app::event_y_root();
                     let lol = "Add To Queue,Insert Next,Filler";
                     let parts: Vec<&str> = lol.split(",").collect();
                     let _popwin =

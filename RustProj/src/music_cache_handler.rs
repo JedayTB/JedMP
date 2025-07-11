@@ -88,8 +88,6 @@ pub mod music_file_handler {
         }
     }
 
-    // TODO
-    // Change this function to return a Result Vec<PlayQueueSong>
     pub fn load_cached_songs() -> Vec<PlayQueueSong> {
         let cached_songs_path = &get_jedmp_musiccache_path();
         let mut queue_list: Vec<PlayQueueSong> = Vec::new();
@@ -112,7 +110,6 @@ pub mod music_file_handler {
             queue_list.push(plq_song);
         }
 
-        // Rust why?
         return queue_list;
     }
 }

@@ -12,7 +12,6 @@ impl PlayQueueSong {
         let song_title = song_title;
         let _song_artists = "Not implemented yet".to_owned();
         let _song_image_path = "Not implemented yet.".to_owned();
-
         PlayQueueSong {
             song_path,
             song_title,

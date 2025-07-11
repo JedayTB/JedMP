@@ -1,7 +1,6 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
     use crate::play_queue_song::PlayQueueSong;
-    use crate::popup_window;
     use crate::song_identifier::SongIdentifier;
     use fltk::dialog;
     use fltk::group::Flex;
@@ -81,6 +80,15 @@ pub mod gui_controller {
         let mut next_song_button = Button::default().with_label(">");
 
         button_box.end();
+        let x_pad_from_lib = 25;
+        let play_queue_box_width = 250;
+        let play_queue_box_height = 300;
+
+        let mut play_queue_box = Flex::default()
+            .column()
+            .with_size(play_queue_box_width, play_queue_box_height)
+            .right_of(&library_list, x_pad_from_lib);
+        play_queue_box.set_frame(FrameType::GtkDownBox);
         // GUI state variables creation
 
         // WARNING
@@ -96,8 +104,8 @@ pub mod gui_controller {
         let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
-        make_queue_list_frames(&mut library_list, &play_queue.borrow().clone());
-
+        make_library_list_frames(&mut library_list, &play_queue.borrow().clone());
+        make_queue_list_frames(&mut play_queue_box, &play_queue.borrow().clone());
         // Get an output steam handle to the default physical sound device
         // Note that no sound will be played if _stream is droppped;
         // Stream must live as long as sink
@@ -188,7 +196,7 @@ pub mod gui_controller {
                         music_file_handler::process_chosen_song_directory(strname);
                         *play_queue.borrow_mut() = music_file_handler::load_cached_songs();
 
-                        make_queue_list_frames(
+                        make_library_list_frames(
                             &mut *shared_library_list.borrow_mut(),
                             &play_queue.borrow().clone(),
                         );
@@ -199,18 +207,23 @@ pub mod gui_controller {
                 },
             }
         });
-
         wind.end();
         wind.make_resizable(true);
         wind.show();
         app.run().unwrap();
     }
-    fn make_queue_list_frames(queue_list_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
+    fn make_library_list_frames(library_list_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
         for song in play_queue {
             //let _path = path.split("/");
             //let songname = _path.collect::<Vec<&str>>();
             let si = SongIdentifier::new(100, 30, &song.song_title, fltk::enums::Align::Right);
-            queue_list_box.add(&*si);
+            library_list_box.add(&*si);
+        }
+    }
+    fn make_queue_list_frames(play_queue_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
+        for queued_song in play_queue {
+            let group = Flex::default().with_label(&queued_song.song_title);
+            play_queue_box.add(&group);
         }
     }
 }
