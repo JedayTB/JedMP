@@ -1,19 +1,33 @@
-// Tell rust to stop annoying me mid dev
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
 pub mod popup_window {
-    use fltk::{button::Button, enums::*, prelude::*, widget::Widget, window::DoubleWindow, *};
-    use std::cell::RefCell;
-    use std::rc::Rc;
+    use fltk::{button::Button, enums::*, prelude::*, *};
+
+    use crate::song_identifier::SongIdentifierType;
+
+    pub const LIBRARY_OPTIONS: &'static str = "Add To Queue,Insert Next,Filler";
+    pub const PLAYQUEUE_OPTIONS: &'static str = "Remove This,Stop after,Play Now";
 
     widget_extends!(PopupWindow, window::Window, win);
     pub struct PopupWindow {
         win: window::Window,
     }
+
     impl PopupWindow {
-        pub fn new(width: i32, choices: &[&str]) -> Self {
-            let mut win = window::Window::default().with_size(width, choices.len() as i32 * 25);
+        pub fn new(width: i32, pwin_type: &SongIdentifierType) -> Self {
+            let mut _choices: Vec<&str> = Vec::new();
+            match pwin_type {
+                SongIdentifierType::LIBRARY => {
+                    _choices = crate::popup_window::popup_window::LIBRARY_OPTIONS
+                        .split(",")
+                        .collect();
+                }
+                SongIdentifierType::PLAYQUEUE => {
+                    _choices = crate::popup_window::popup_window::PLAYQUEUE_OPTIONS
+                        .split(",")
+                        .collect();
+                }
+            }
+
+            let mut win = window::Window::default().with_size(width, _choices.len() as i32 * 25);
             win.set_color(Color::White);
             win.set_frame(FrameType::BorderBox);
 
@@ -59,7 +73,7 @@ pub mod popup_window {
             win.show();
             win.end();
 
-            for (i, choice) in choices.iter().enumerate() {
+            for (_i, choice) in _choices.iter().enumerate() {
                 let mut but = Button::default().with_size(width, 25).with_label(choice);
                 but.clear_visible_focus();
                 pack.add(&but);

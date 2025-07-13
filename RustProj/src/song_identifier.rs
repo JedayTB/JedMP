@@ -6,14 +6,24 @@ use fltk::{
     text::*,
     *,
 };
+pub enum SongIdentifierType {
+    LIBRARY,
+    PLAYQUEUE,
+}
 // Add to group by using group.add(&*SongIdentifier), because it needs to be dereferenced
 pub struct SongIdentifier {
     group: Flex,
     _song_name_text: TextDisplay,
 }
-
+// Constructor functions
 impl SongIdentifier {
-    pub fn new(w: i32, h: i32, song_name: &str, alignment: Align) -> SongIdentifier {
+    pub fn new(
+        w: i32,
+        h: i32,
+        song_name: &str,
+        alignment: Align,
+        iden_type: SongIdentifierType,
+    ) -> SongIdentifier {
         let mut group = Flex::default().with_size(w, h);
         let mut _song_name_text = text::TextDisplay::default().center_of(&group);
         let mut txt_buffer = TextBuffer::default();
@@ -24,15 +34,13 @@ impl SongIdentifier {
         group.set_align(alignment);
         group.set_frame(enums::FrameType::GtkUpBox);
 
-        group.handle(|_widg, event| match event {
+        group.handle(move |_widg, event| match event {
             Event::Push => {
                 if app::event_mouse_button() == app::MouseButton::Right {
                     let mx = app::event_x_root();
                     let my = app::event_y_root();
-                    let lol = "Add To Queue,Insert Next,Filler";
-                    let parts: Vec<&str> = lol.split(",").collect();
-                    let _popwin =
-                        popup_window::popup_window::PopupWindow::new(50, &parts).with_pos(mx, my);
+                    let _popwin = popup_window::popup_window::PopupWindow::new(50, &iden_type)
+                        .with_pos(mx, my);
                 }
                 true
             }
@@ -46,4 +54,5 @@ impl SongIdentifier {
         }
     }
 }
+
 widget_extends!(SongIdentifier, group::Flex, group);

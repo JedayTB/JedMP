@@ -1,3 +1,6 @@
+# 2025-07-13 Change: Play_queue_visualization finished
+Added: SongIdentifierType: Enum, LIBRARYOPTIONS: &'static String, PLAYQUEUEOPTIONS: &'static String
+
 # 2025-07-10 Change: Play_queue visualization partly implemented
 popup_window now uses the mouse position on the screen instead of window, this fixes the window from appearing on the wrong screen
 Created Play_queue_box inside GUI handler thats populated with flexboxes

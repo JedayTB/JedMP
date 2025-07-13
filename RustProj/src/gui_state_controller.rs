@@ -1,10 +1,10 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
     use crate::play_queue_song::PlayQueueSong;
-    use crate::song_identifier::SongIdentifier;
+    use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
-    use fltk::{app, button::Button, enums::*, prelude::*, window::Window};
+    use fltk::{app, button::Button, enums::*, group::Pack, prelude::*, window::Window};
 
     use fltk_theme::{ColorTheme, color_themes};
     use rodio::{OutputStream, Sink};
@@ -214,16 +214,36 @@ pub mod gui_controller {
     }
     fn make_library_list_frames(library_list_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
         for song in play_queue {
-            //let _path = path.split("/");
-            //let songname = _path.collect::<Vec<&str>>();
-            let si = SongIdentifier::new(100, 30, &song.song_title, fltk::enums::Align::Right);
+            let si = SongIdentifier::new(
+                100,
+                30,
+                &song.song_title,
+                fltk::enums::Align::Right,
+                SongIdentifierType::LIBRARY,
+            );
             library_list_box.add(&*si);
         }
     }
     fn make_queue_list_frames(play_queue_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
+        let inner_pad = 2;
+        let pq_box_width = play_queue_box.w() - inner_pad;
+        let pq_box_height = play_queue_box.h() - inner_pad;
+
+        let mut pack = Pack::default().with_size(pq_box_width, pq_box_height);
+        pack.set_spacing(inner_pad);
+        play_queue_box.add(&pack);
+
         for queued_song in play_queue {
-            let group = Flex::default().with_label(&queued_song.song_title);
-            play_queue_box.add(&group);
+            let song_iden = SongIdentifier::new(
+                pq_box_width,
+                pq_box_height,
+                &queued_song.song_title,
+                fltk::enums::Align::Right,
+                SongIdentifierType::PLAYQUEUE,
+            );
+            pack.add(&*song_iden);
         }
+        play_queue_box.recalc();
+        pack.auto_layout();
     }
 }

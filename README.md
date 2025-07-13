@@ -8,16 +8,15 @@ Most recent TODO update - 2025-07-09 3:36 pm EST
 
 RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only handle by symphonia)
 
-After words, Refactor into separate files to cleanup main.rs
-
 TODO List:
+
+- Create play_queue, with functionality to change order of songs.
+- Play_queue functions (insert, insert next, remove)
 - Music library view, scrollable 
   - Shuffle functions
   - Full Music library 
   - Artist separated library
     - Album separated by artist library
-- Create play_queue, with functionality to change order of songs.
-- Song frames in music libraries have "Add to Queue" function
 - Current playing song 
 - Better UI.
 
