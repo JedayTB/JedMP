@@ -1,6 +1,7 @@
 // Modules
 pub mod gui_state_controller;
 pub mod music_cache_handler;
+pub mod music_play_queue_handler;
 pub mod play_queue_song;
 pub mod popup_window;
 pub mod song_file_metadata_handler;
@@ -28,6 +29,8 @@ fn main() {
         }
     }
 
+    // Everything happens in gui_controller - because separating logic that far out
+    // Is a pain in the ass with this language.
     gui_controller::open_window();
 }
 

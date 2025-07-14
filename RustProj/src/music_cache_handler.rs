@@ -4,16 +4,11 @@ pub mod music_file_handler {
     use std::fs::{self, OpenOptions};
 
     use rodio::Decoder;
-    use std::cell::RefCell;
     use std::io::{BufRead, BufReader, Write};
     use std::path::PathBuf;
 
-    use std::rc::Rc;
-
-    use crate::get_jedmp_dir;
     use crate::get_jedmp_musiccache_path;
-    use crate::play_queue_song::PlayQueueSong;
-    use crate::song_file_metadata_handler::*;
+    use crate::{get_jedmp_dir, music_play_queue_handler};
     pub fn load_path(path_to_song: &String) -> Decoder<BufReader<File>> {
         let f = File::open(path_to_song);
         let file = BufReader::new(f.unwrap());
@@ -56,7 +51,7 @@ pub mod music_file_handler {
             fs::write(cached_songs_path, song_path).expect("Couldn't write.");
         }
     }
-    pub fn try_load_cached_music() -> Result<Rc<RefCell<Vec<PlayQueueSong>>>, &'static str> {
+    pub fn try_load_cached_music() {
         let jedmp_directory = get_jedmp_dir();
         let pathb = PathBuf::from(&jedmp_directory);
         let mut _cachedfiles: File;
@@ -64,8 +59,6 @@ pub mod music_file_handler {
 
         let m = pathb.try_exists();
         let r = m.expect("Path Exists");
-        let mut loadedcachedsongs: bool = false;
-        let play_queue: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::new(RefCell::default());
         if r == false {
             println!("Jed MP Folder does not exist. Creating and populating...");
             fs::create_dir(&jedmp_directory).expect("Jed MP Dir Created");
@@ -74,23 +67,13 @@ pub mod music_file_handler {
             _cachedfiles = File::create(&cachedfiles_path_str).unwrap();
             print!("Created cachedfiles.. file");
         } else {
-            println!("Cached Music Found, Loading values...");
-            // Load Cached values..
-            println!("Loading music..");
-
-            *play_queue.borrow_mut() = load_cached_songs();
-            loadedcachedsongs = true;
-        }
-        if loadedcachedsongs {
-            Ok(play_queue)
-        } else {
-            Err("No CachedMusicFile found, not returning play queue")
+            println!("Cached Music Found, Loading library...");
+            load_cached_songs();
         }
     }
 
-    pub fn load_cached_songs() -> Vec<PlayQueueSong> {
+    pub fn load_cached_songs() {
         let cached_songs_path = &get_jedmp_musiccache_path();
-        let mut queue_list: Vec<PlayQueueSong> = Vec::new();
         let cached_music_file =
             File::open(cached_songs_path).expect("Couldn't read cached_songs file.");
         let c_metadata = cached_music_file.metadata().expect("File has no metadata?");
@@ -101,15 +84,6 @@ pub mod music_file_handler {
         }
         let buf_reader = BufReader::new(cached_music_file);
         let string_it = buf_reader.lines();
-
-        for lines in string_it {
-            let song_path = lines.expect("Couldn't read song paths.");
-            let song_title = song_file_metadata_handler::get_song_title(&song_path);
-            let plq_song = PlayQueueSong::new(song_path, song_title);
-
-            queue_list.push(plq_song);
-        }
-
-        return queue_list;
+        music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
     }
 }

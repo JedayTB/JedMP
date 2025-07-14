@@ -1,3 +1,4 @@
+// Refactor to 'Song' to avoid confusion.
 #[derive(Clone)]
 pub struct PlayQueueSong {
     pub song_path: String,

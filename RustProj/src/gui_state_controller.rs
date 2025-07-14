@@ -1,6 +1,6 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
-    use crate::play_queue_song::PlayQueueSong;
+    use crate::music_play_queue_handler::play_queue_handler::PLAY_QUEUE;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
@@ -11,7 +11,6 @@ pub mod gui_controller {
     use std::cell::RefCell;
 
     use std::rc::Rc;
-    // Static variables
 
     // Functions
     pub fn open_window() {
@@ -91,41 +90,25 @@ pub mod gui_controller {
         play_queue_box.set_frame(FrameType::GtkDownBox);
         // GUI state variables creation
 
-        // WARNING
-        // Could lead to misaligned index when skipping, going back
-        let play_queue: Rc<RefCell<Vec<PlayQueueSong>>> =
-            music_file_handler::try_load_cached_music().unwrap_or_default();
-        let play_queue_last: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
-        let play_queue_next: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
-        let pause_play_play_queue: Rc<RefCell<Vec<PlayQueueSong>>> = Rc::clone(&play_queue);
-
         let current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
         let index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
-        make_library_list_frames(&mut library_list, &play_queue.borrow().clone());
-        make_queue_list_frames(&mut play_queue_box, &play_queue.borrow().clone());
+        make_library_list_frames(&mut library_list);
+        make_queue_list_frames(&mut play_queue_box);
         // Get an output steam handle to the default physical sound device
         // Note that no sound will be played if _stream is droppped;
         // Stream must live as long as sink
 
+        music_file_handler::load_cached_songs();
+        println!("{:?}", PLAY_QUEUE.read().unwrap().len());
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let sink = Rc::new(RefCell::new(Sink::try_new(&stream_handle).unwrap()));
         let sink_pause = Rc::clone(&sink);
         let sink_next = Rc::clone(&sink);
         let sink_last = Rc::clone(&sink);
         // load a sound from a file, using a path relative to cargo.toml
-
-        // Append first song in playqueue if not empty.
-        // Remove during next refactor - 2025-06-10
-        if play_queue.borrow().len() != 0 {
-            let source = music_file_handler::load_path(&play_queue.borrow()[0].song_path);
-            // Sink has weird behavior where it will play
-            // song after having it be appended
-            sink.borrow().append(source);
-            sink.borrow().pause();
-        }
 
         last_song_button.set_callback(move |_| {
             let mut curr_ind = *index_last_pointer.borrow();
@@ -135,7 +118,7 @@ pub mod gui_controller {
             }
 
             *index_last_pointer.borrow_mut() = curr_ind;
-            let next_song_path = &play_queue_last.borrow()[curr_ind].clone();
+            let next_song_path = PLAY_QUEUE.read().unwrap()[curr_ind].clone();
             let new_source = music_file_handler::load_path(&next_song_path.song_path);
             sink_last.borrow().stop();
             sink_last.borrow().append(new_source);
@@ -145,12 +128,12 @@ pub mod gui_controller {
         next_song_button.set_callback(move |_| {
             let mut curr_ind = *index_next_pointer.borrow();
             curr_ind += 1;
-            if curr_ind > play_queue_next.borrow().len() - 1 {
+            if curr_ind > PLAY_QUEUE.read().unwrap().len() - 1 {
                 curr_ind -= 1;
             }
 
             *index_next_pointer.borrow_mut() = curr_ind;
-            let next_song_path = &play_queue_next.borrow()[curr_ind].clone();
+            let next_song_path = PLAY_QUEUE.read().unwrap()[curr_ind].clone();
             let next_source = music_file_handler::load_path(&next_song_path.song_path);
 
             sink_next.borrow().stop();
@@ -161,7 +144,7 @@ pub mod gui_controller {
         pause_song_button.set_callback(move |btn| {
             if sink.borrow().empty() {
                 let ind: usize = *pause_play_index.borrow();
-                let path = &pause_play_play_queue.borrow()[ind].clone();
+                let path = PLAY_QUEUE.read().unwrap()[ind].clone();
                 let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
                 sink.borrow().stop();
@@ -193,13 +176,11 @@ pub mod gui_controller {
                         let strname = directory
                             .to_str()
                             .expect("Directory doesn't have a string name?..");
-                        music_file_handler::process_chosen_song_directory(strname);
-                        *play_queue.borrow_mut() = music_file_handler::load_cached_songs();
 
-                        make_library_list_frames(
-                            &mut *shared_library_list.borrow_mut(),
-                            &play_queue.borrow().clone(),
-                        );
+                        music_file_handler::process_chosen_song_directory(strname);
+                        music_file_handler::load_cached_songs();
+
+                        make_library_list_frames(&mut *shared_library_list.borrow_mut());
                     }
                     dialog::NativeFileChooserAction::Cancelled => {
                         println!("Directory Pick cancelled");
@@ -212,19 +193,22 @@ pub mod gui_controller {
         wind.show();
         app.run().unwrap();
     }
-    fn make_library_list_frames(library_list_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
-        for song in play_queue {
+
+    fn make_library_list_frames(library_list_box: &mut Flex) {
+        for song in PLAY_QUEUE.read().unwrap().iter() {
             let si = SongIdentifier::new(
                 100,
                 30,
                 &song.song_title,
                 fltk::enums::Align::Right,
                 SongIdentifierType::LIBRARY,
+                song.to_owned(),
             );
             library_list_box.add(&*si);
         }
     }
-    fn make_queue_list_frames(play_queue_box: &mut Flex, play_queue: &Vec<PlayQueueSong>) {
+
+    fn make_queue_list_frames(play_queue_box: &mut Flex) {
         let inner_pad = 2;
         let pq_box_width = play_queue_box.w() - inner_pad;
         let pq_box_height = play_queue_box.h() - inner_pad;
@@ -233,13 +217,14 @@ pub mod gui_controller {
         pack.set_spacing(inner_pad);
         play_queue_box.add(&pack);
 
-        for queued_song in play_queue {
+        for queued_song in PLAY_QUEUE.read().unwrap().iter() {
             let song_iden = SongIdentifier::new(
                 pq_box_width,
                 pq_box_height,
                 &queued_song.song_title,
                 fltk::enums::Align::Right,
                 SongIdentifierType::PLAYQUEUE,
+                queued_song.to_owned(),
             );
             pack.add(&*song_iden);
         }

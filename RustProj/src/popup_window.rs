@@ -1,10 +1,14 @@
 pub mod popup_window {
+
     use fltk::{button::Button, enums::*, prelude::*, *};
 
-    use crate::song_identifier::SongIdentifierType;
+    use crate::{
+        music_play_queue_handler::play_queue_handler, play_queue_song::PlayQueueSong,
+        song_identifier::SongIdentifierType,
+    };
 
-    pub const LIBRARY_OPTIONS: &'static str = "Add To Queue,Insert Next,Filler";
-    pub const PLAYQUEUE_OPTIONS: &'static str = "Remove This,Stop after,Play Now";
+    pub const LIBRARY_OPTIONS: &'static str = "Add To Queue,Insert Next";
+    pub const PLAYQUEUE_OPTIONS: &'static str = "Remove This,Play Now,Stop after";
 
     widget_extends!(PopupWindow, window::Window, win);
     pub struct PopupWindow {
@@ -12,27 +16,55 @@ pub mod popup_window {
     }
 
     impl PopupWindow {
-        pub fn new(width: i32, pwin_type: &SongIdentifierType) -> Self {
+        pub fn new(pwin_type: &SongIdentifierType, song: PlayQueueSong) -> Self {
             let mut _choices: Vec<&str> = Vec::new();
+
+            // Kind of ugly. but whatever.
             match pwin_type {
                 SongIdentifierType::LIBRARY => {
                     _choices = crate::popup_window::popup_window::LIBRARY_OPTIONS
                         .split(",")
                         .collect();
+
+                    let mut add_queue_but = Button::default()
+                        .with_label(_choices[0])
+                        .with_size(_choices[0].len() as i32 * 10, 25);
+                    let mut insert_next_but = Button::default()
+                        .with_label(_choices[1])
+                        .with_size(_choices[1].len() as i32 * 10, 25);
+
+                    add_queue_but.set_callback(move |_| {
+                        play_queue_handler::append_to_playqueue(song.clone())
+                    });
+                    insert_next_but.set_callback(move |_| println!("Not implemented yet"));
                 }
                 SongIdentifierType::PLAYQUEUE => {
                     _choices = crate::popup_window::popup_window::PLAYQUEUE_OPTIONS
                         .split(",")
                         .collect();
+                    let mut remove_this_but = Button::default()
+                        .with_label(_choices[0])
+                        .with_size(_choices[0].len() as i32 * 10, 25);
+
+                    let mut play_now_but = Button::default()
+                        .with_label(_choices[1])
+                        .with_size(_choices[1].len() as i32 * 10, 25);
+                    let mut stop_after_but = Button::default()
+                        .with_label(_choices[2])
+                        .with_size(_choices[2].len() as i32 * 10, 25);
+
+                    remove_this_but.set_callback(|_| println!("Not implemented yet"));
+                    play_now_but.set_callback(|_| println!("Not implemented yet"));
+                    stop_after_but.set_callback(|_| println!("Not implemented yet"));
                 }
             }
-
-            let mut win = window::Window::default().with_size(width, _choices.len() as i32 * 25);
+            let mut win = window::Window::default();
             win.set_color(Color::White);
             win.set_frame(FrameType::BorderBox);
 
             let mut pack = group::Pack::new(1, 1, win.w() - 2, win.h() - 2, None);
             win.set_border(false);
+
             win.handle(move |win, event| match event {
                 Event::Push => {
                     win.trigger();
@@ -44,41 +76,13 @@ pub mod popup_window {
                 }
                 _ => false,
             });
-            // More thorough handling when a click is detected
-            // For some reason doesn't get called.. ever
-            // whatever
-            win.set_callback(move |win| {
-                // 1 left, 2 middle, 3 right.
-                println!("{:?},hello? ", app::event_button());
-                if app::event_button() == 1 {
-                    println!("Mouse button was pressed");
-                    let m_x = app::event_x_root();
-                    let m_y = app::event_y_root();
 
-                    let win_x = win.x();
-                    let win_y = win.y();
-                    let win_w = win.width();
-                    let win_h = win.height();
+            win.set_size(100, _choices.len() as i32 * 25);
+            pack.set_size(100, _choices.len() as i32 * 25);
 
-                    let within_x = m_x > win_x && m_x < win_x + win_w;
-                    let within_y = m_y > win_y && m_y < win_y + win_h;
-
-                    if within_x == false && within_y == false {
-                        win.hide();
-                    }
-
-                    win.hide();
-                }
-            });
+            pack.auto_layout();
             win.show();
             win.end();
-
-            for (_i, choice) in _choices.iter().enumerate() {
-                let mut but = Button::default().with_size(width, 25).with_label(choice);
-                but.clear_visible_focus();
-                pack.add(&but);
-            }
-            pack.auto_layout();
             Self { win }
         }
     }
