@@ -202,6 +202,7 @@ pub mod gui_controller {
                 fltk::enums::Align::Right,
                 SongIdentifierType::LIBRARY,
                 song.to_owned(),
+                None,
             );
             library_list_box.add(&*si);
         }
@@ -215,7 +216,7 @@ pub mod gui_controller {
         let mut pack = Pack::default().with_size(pq_box_width, pq_box_height);
         pack.set_spacing(inner_pad);
         play_queue_box.add(&pack);
-
+        let mut i: i32 = 0;
         for queued_song in PLAY_QUEUE.read().unwrap().iter() {
             let song_iden = SongIdentifier::new(
                 pq_box_width,
@@ -224,8 +225,10 @@ pub mod gui_controller {
                 fltk::enums::Align::Right,
                 SongIdentifierType::PLAYQUEUE,
                 queued_song.to_owned(),
+                Some(i as usize),
             );
             pack.add(&*song_iden);
+            i += 1;
         }
         play_queue_box.recalc();
         pack.auto_layout();

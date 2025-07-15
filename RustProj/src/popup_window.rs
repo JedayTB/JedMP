@@ -1,5 +1,8 @@
 pub mod popup_window {
 
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
     use fltk::{button::Button, enums::*, prelude::*, *};
 
     use crate::{
@@ -16,7 +19,7 @@ pub mod popup_window {
     }
 
     impl PopupWindow {
-        pub fn new(pwin_type: &SongIdentifierType, song: PlayQueueSong) -> Self {
+        pub fn new(pwin_type: &SongIdentifierType, song: PlayQueueSong, index: usize) -> Self {
             let mut win = window::Window::default();
             win.set_color(Color::White);
             win.set_frame(FrameType::BorderBox);
@@ -32,7 +35,6 @@ pub mod popup_window {
                     _choices = crate::popup_window::popup_window::LIBRARY_OPTIONS
                         .split(",")
                         .collect();
-                    dbg!(&_choices);
                     let mut add_queue_but = Button::default()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
@@ -40,10 +42,18 @@ pub mod popup_window {
                         .with_label(_choices[1])
                         .with_size(_choices[1].len() as i32 * 10, 25);
 
+                    let song_: Rc<RefCell<PlayQueueSong>> = Rc::new(RefCell::new(song));
+                    let song__ = Rc::clone(&song_);
+
                     add_queue_but.set_callback(move |_| {
-                        play_queue_handler::append_to_playqueue(song.clone())
+                        play_queue_handler::append_to_playqueue(song_.borrow().clone())
                     });
-                    insert_next_but.set_callback(move |_| println!("Not implemented yet"));
+                    insert_next_but.set_callback(move |_| {
+                        play_queue_handler::insert_song_into_playqueue(
+                            song__.borrow().clone(),
+                            index,
+                        )
+                    });
                 }
                 SongIdentifierType::PLAYQUEUE => {
                     _choices = crate::popup_window::popup_window::PLAYQUEUE_OPTIONS
@@ -67,10 +77,6 @@ pub mod popup_window {
             }
 
             win.handle(move |win, event| match event {
-                Event::Push => {
-                    win.trigger();
-                    true
-                }
                 Event::Unfocus => {
                     win.hide();
                     true

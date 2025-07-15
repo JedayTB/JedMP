@@ -1,5 +1,5 @@
 // Refactor to 'Song' to avoid confusion.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PlayQueueSong {
     pub song_path: String,
     pub song_title: String,

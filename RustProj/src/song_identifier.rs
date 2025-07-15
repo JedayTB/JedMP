@@ -21,6 +21,7 @@ pub struct SongIdentifier {
     group: Flex,
     _song_name_text: TextDisplay,
     song_link: PlayQueueSong,
+    index_in_list: Option<usize>,
 }
 // Constructor functions
 impl SongIdentifier {
@@ -31,6 +32,7 @@ impl SongIdentifier {
         alignment: Align,
         iden_type: SongIdentifierType,
         song_link: PlayQueueSong,
+        index_in_list: Option<usize>,
     ) -> SongIdentifier {
         let mut group = Flex::default().with_size(w, h);
         let mut _song_name_text = text::TextDisplay::default().center_of(&group);
@@ -50,6 +52,7 @@ impl SongIdentifier {
                     let _popwin = popup_window::popup_window::PopupWindow::new(
                         &iden_type,
                         song_clone.clone(),
+                        index_in_list.unwrap_or(9999999999),
                     )
                     .with_pos(mx, my);
                 }
@@ -63,6 +66,7 @@ impl SongIdentifier {
             group,
             _song_name_text,
             song_link,
+            index_in_list,
         }
     }
 }

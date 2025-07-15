@@ -1,3 +1,4 @@
+#![allow(unused_must_use)]
 pub mod play_queue_handler {
     use crate::play_queue_song::PlayQueueSong;
     use crate::song_file_metadata_handler;
@@ -5,6 +6,8 @@ pub mod play_queue_handler {
     use std::fs::File;
     use std::{io::BufReader, io::Lines, sync::RwLock};
     pub static PLAY_QUEUE: RwLock<Vec<PlayQueueSong>> = RwLock::new(Vec::new());
+    pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
+
     pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>) {
         // Clear queue first
         PLAY_QUEUE.write().unwrap().clear();
@@ -24,11 +27,16 @@ pub mod play_queue_handler {
     // as well.
     pub fn insert_song_into_playqueue(pq_song: PlayQueueSong, index: usize) {
         PLAY_QUEUE.write().unwrap().insert(index, pq_song);
+
+        dbg!(PLAY_QUEUE.read().unwrap());
     }
     pub fn append_to_playqueue(pq_song: PlayQueueSong) {
         PLAY_QUEUE.write().unwrap().push(pq_song);
+        dbg!(PLAY_QUEUE.read().unwrap());
     }
     pub fn remove_from_playqueue(index: usize) {
         PLAY_QUEUE.write().unwrap().remove(index);
+
+        dbg!(PLAY_QUEUE.read().unwrap());
     }
 }
