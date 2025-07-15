@@ -95,14 +95,13 @@ pub mod gui_controller {
         let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
         let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
 
+        // Because Im bad at coding, this must be called before anything to do with
+        // play queue is done.
+        music_file_handler::try_load_cached_music();
+
         make_library_list_frames(&mut library_list);
         make_queue_list_frames(&mut play_queue_box);
-        // Get an output steam handle to the default physical sound device
-        // Note that no sound will be played if _stream is droppped;
-        // Stream must live as long as sink
 
-        music_file_handler::load_cached_songs();
-        println!("{:?}", PLAY_QUEUE.read().unwrap().len());
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let sink = Rc::new(RefCell::new(Sink::try_new(&stream_handle).unwrap()));
         let sink_pause = Rc::clone(&sink);

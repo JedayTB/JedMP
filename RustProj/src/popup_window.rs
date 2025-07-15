@@ -17,6 +17,13 @@ pub mod popup_window {
 
     impl PopupWindow {
         pub fn new(pwin_type: &SongIdentifierType, song: PlayQueueSong) -> Self {
+            let mut win = window::Window::default();
+            win.set_color(Color::White);
+            win.set_frame(FrameType::BorderBox);
+
+            let mut pack = group::Pack::new(1, 1, win.w() - 2, win.h() - 2, None);
+            win.set_border(false);
+
             let mut _choices: Vec<&str> = Vec::new();
 
             // Kind of ugly. but whatever.
@@ -25,7 +32,7 @@ pub mod popup_window {
                     _choices = crate::popup_window::popup_window::LIBRARY_OPTIONS
                         .split(",")
                         .collect();
-
+                    dbg!(&_choices);
                     let mut add_queue_but = Button::default()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
@@ -58,12 +65,6 @@ pub mod popup_window {
                     stop_after_but.set_callback(|_| println!("Not implemented yet"));
                 }
             }
-            let mut win = window::Window::default();
-            win.set_color(Color::White);
-            win.set_frame(FrameType::BorderBox);
-
-            let mut pack = group::Pack::new(1, 1, win.w() - 2, win.h() - 2, None);
-            win.set_border(false);
 
             win.handle(move |win, event| match event {
                 Event::Push => {
