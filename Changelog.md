@@ -1,3 +1,6 @@
+# 2025-07-18 Change: Refactored All Play queue indexes as global inside music_play_queue_handler as RwLock type
+As name suggests, play queue indexes no longer use dodgy Refcell types and now reference the Global
+
 # 2025-07-13 Change: Play_queue_visualization finished
 Added: SongIdentifierType: Enum, LIBRARYOPTIONS: &'static String, PLAYQUEUEOPTIONS: &'static String
 
