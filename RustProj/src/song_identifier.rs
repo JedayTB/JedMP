@@ -19,7 +19,6 @@ pub enum SongIdentifierType {
 // Add to group by using group.add(&*SongIdentifier), because it needs to be dereferenced
 pub struct SongIdentifier {
     group: Flex,
-    _song_name_text: TextDisplay,
     song_link: PlayQueueSong,
     index_in_list: Option<usize>,
 }
@@ -35,6 +34,7 @@ impl SongIdentifier {
         index_in_list: Option<usize>,
     ) -> SongIdentifier {
         let mut group = Flex::default().with_size(w, h);
+
         let mut _song_name_text = text::TextDisplay::default().center_of(&group);
         let mut txt_buffer = TextBuffer::default();
         txt_buffer.set_text(song_name);
@@ -44,6 +44,7 @@ impl SongIdentifier {
         group.set_align(alignment);
         group.set_frame(enums::FrameType::GtkUpBox);
         let song_clone = song_link.clone();
+
         group.handle(move |_widg, event| match event {
             Event::Push => {
                 if app::event_mouse_button() == app::MouseButton::Right {
@@ -52,7 +53,7 @@ impl SongIdentifier {
                     let _popwin = popup_window::popup_window::PopupWindow::new(
                         &iden_type,
                         song_clone.clone(),
-                        index_in_list.unwrap_or(9999999999),
+                        index_in_list,
                     )
                     .with_pos(mx, my);
                 }
@@ -61,10 +62,8 @@ impl SongIdentifier {
             _ => false,
         });
         group.end();
-        //let col = Color::from_rgb(100, 0, 100);
         SongIdentifier {
             group,
-            _song_name_text,
             song_link,
             index_in_list,
         }

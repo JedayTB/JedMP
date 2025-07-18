@@ -6,6 +6,7 @@ pub mod popup_window {
     use fltk::{button::Button, enums::*, prelude::*, *};
 
     use crate::{
+        gui_state_controller,
         music_play_queue_handler::play_queue_handler::{self, PLAY_QUEUE_INDEX},
         play_queue_song::PlayQueueSong,
         song_identifier::SongIdentifierType,
@@ -20,7 +21,11 @@ pub mod popup_window {
     }
 
     impl PopupWindow {
-        pub fn new(pwin_type: &SongIdentifierType, song: PlayQueueSong, index: usize) -> Self {
+        pub fn new(
+            pwin_type: &SongIdentifierType,
+            song: PlayQueueSong,
+            _index: Option<usize>,
+        ) -> Self {
             let mut win = window::Window::default();
             win.set_color(Color::White);
             win.set_frame(FrameType::BorderBox);
@@ -48,7 +53,11 @@ pub mod popup_window {
 
                     add_queue_but.set_callback(move |_| {
                         println!("Appended to pq");
-                        play_queue_handler::append_to_playqueue(song_.borrow().clone())
+                        play_queue_handler::append_to_playqueue(song_.borrow().clone());
+
+                        gui_state_controller::gui_controller::append_song_to_queue(
+                            song_.borrow().clone(),
+                        );
                     });
                     insert_next_but.set_callback(move |_| {
                         println!("Inserted in pq");
@@ -85,15 +94,14 @@ pub mod popup_window {
                     win.hide();
                     true
                 }
-                /*
+
                 Event::Unfocus => {
                     win.hide();
                     true
                 }
-                */
+
                 _ => false,
             });
-
             win.set_size(100, _choices.len() as i32 * 25);
             pack.set_size(100, _choices.len() as i32 * 25);
 

@@ -3,6 +3,7 @@ pub mod gui_controller {
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE, PLAY_QUEUE_INDEX, decrement_play_queue_index, increment_play_queue_index,
     };
+    use crate::play_queue_song::PlayQueueSong;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
@@ -11,7 +12,6 @@ pub mod gui_controller {
     use fltk_theme::{ColorTheme, color_themes};
     use rodio::{OutputStream, Sink};
     use std::cell::RefCell;
-
     use std::rc::Rc;
 
     // Functions
@@ -194,7 +194,7 @@ pub mod gui_controller {
                 100,
                 30,
                 &song.song_title,
-                fltk::enums::Align::Right,
+                fltk::enums::Align::Center,
                 SongIdentifierType::LIBRARY,
                 song.to_owned(),
                 None,
@@ -217,7 +217,7 @@ pub mod gui_controller {
                 pq_box_width,
                 pq_box_height,
                 &queued_song.song_title,
-                fltk::enums::Align::Right,
+                fltk::enums::Align::Center,
                 SongIdentifierType::PLAYQUEUE,
                 queued_song.to_owned(),
                 Some(i as usize),
@@ -228,4 +228,6 @@ pub mod gui_controller {
         play_queue_box.recalc();
         pack.auto_layout();
     }
+
+    pub fn append_song_to_queue(_pq_song: PlayQueueSong) {}
 }
