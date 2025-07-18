@@ -1,6 +1,8 @@
 pub mod gui_controller {
     use crate::music_cache_handler::music_file_handler;
-    use crate::music_play_queue_handler::play_queue_handler::PLAY_QUEUE;
+    use crate::music_play_queue_handler::play_queue_handler::{
+        PLAY_QUEUE, PLAY_QUEUE_INDEX, decrement_play_queue_index, increment_play_queue_index,
+    };
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
@@ -90,11 +92,6 @@ pub mod gui_controller {
         play_queue_box.set_frame(FrameType::GtkDownBox);
         // GUI state variables creation
 
-        let current_song_index: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
-        let index_next_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-        let index_last_pointer: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-        let pause_play_index: Rc<RefCell<usize>> = Rc::clone(&current_song_index);
-
         // Because Im bad at coding, this must be called before anything to do with
         // play queue is done.
         music_file_handler::try_load_cached_music();
@@ -107,17 +104,12 @@ pub mod gui_controller {
         let sink_pause = Rc::clone(&sink);
         let sink_next = Rc::clone(&sink);
         let sink_last = Rc::clone(&sink);
-        // load a sound from a file, using a path relative to cargo.toml
 
         last_song_button.set_callback(move |_| {
-            let mut curr_ind = *index_last_pointer.borrow();
+            // Goes back a song. Replays song if already at 0th index
+            let play_ind = decrement_play_queue_index().unwrap_or(0);
 
-            if curr_ind != 0 {
-                curr_ind -= 1;
-            }
-
-            *index_last_pointer.borrow_mut() = curr_ind;
-            let next_song_path = PLAY_QUEUE.read().unwrap()[curr_ind].clone();
+            let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind].clone();
             let new_source = music_file_handler::load_path(&next_song_path.song_path);
             sink_last.borrow().stop();
             sink_last.borrow().append(new_source);
@@ -125,25 +117,28 @@ pub mod gui_controller {
         });
 
         next_song_button.set_callback(move |_| {
-            let mut curr_ind = *index_next_pointer.borrow();
-            curr_ind += 1;
-            if curr_ind > PLAY_QUEUE.read().unwrap().len() - 1 {
-                curr_ind -= 1;
+            let play_ind = increment_play_queue_index();
+
+            if play_ind == None {
+                // Other logic here, check if replay playlist is on for example.
+                // (Future feature)
+
+                // We've reached end of play queue.
+                sink_next.borrow().stop();
+            } else {
+                let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind.unwrap()].clone();
+                let next_source = music_file_handler::load_path(&next_song_path.song_path);
+
+                sink_next.borrow().stop();
+                sink_next.borrow().append(next_source);
+                sink_next.borrow().play();
             }
-
-            *index_next_pointer.borrow_mut() = curr_ind;
-            let next_song_path = PLAY_QUEUE.read().unwrap()[curr_ind].clone();
-            let next_source = music_file_handler::load_path(&next_song_path.song_path);
-
-            sink_next.borrow().stop();
-            sink_next.borrow().append(next_source);
-            sink_next.borrow().play();
         });
 
         pause_song_button.set_callback(move |btn| {
             if sink.borrow().empty() {
-                let ind: usize = *pause_play_index.borrow();
-                let path = PLAY_QUEUE.read().unwrap()[ind].clone();
+                let ind = PLAY_QUEUE_INDEX.read().unwrap();
+                let path = PLAY_QUEUE.read().unwrap()[*ind].clone();
                 let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
                 sink.borrow().stop();

@@ -6,7 +6,8 @@ pub mod popup_window {
     use fltk::{button::Button, enums::*, prelude::*, *};
 
     use crate::{
-        music_play_queue_handler::play_queue_handler, play_queue_song::PlayQueueSong,
+        music_play_queue_handler::play_queue_handler::{self, PLAY_QUEUE_INDEX},
+        play_queue_song::PlayQueueSong,
         song_identifier::SongIdentifierType,
     };
 
@@ -46,13 +47,16 @@ pub mod popup_window {
                     let song__ = Rc::clone(&song_);
 
                     add_queue_but.set_callback(move |_| {
+                        println!("Appended to pq");
                         play_queue_handler::append_to_playqueue(song_.borrow().clone())
                     });
                     insert_next_but.set_callback(move |_| {
+                        println!("Inserted in pq");
+                        let current_index = PLAY_QUEUE_INDEX.read().unwrap();
                         play_queue_handler::insert_song_into_playqueue(
                             song__.borrow().clone(),
-                            index,
-                        )
+                            *current_index,
+                        );
                     });
                 }
                 SongIdentifierType::PLAYQUEUE => {
@@ -70,17 +74,23 @@ pub mod popup_window {
                         .with_label(_choices[2])
                         .with_size(_choices[2].len() as i32 * 10, 25);
 
-                    remove_this_but.set_callback(|_| println!("Not implemented yet"));
-                    play_now_but.set_callback(|_| println!("Not implemented yet"));
-                    stop_after_but.set_callback(|_| println!("Not implemented yet"));
+                    remove_this_but.set_callback(|_| println!("RM: Not implemented yet"));
+                    play_now_but.set_callback(|_| println!("PN: Not implemented yet"));
+                    stop_after_but.set_callback(|_| println!("SA: Not implemented yet"));
                 }
             }
 
             win.handle(move |win, event| match event {
+                Event::Leave => {
+                    win.hide();
+                    true
+                }
+                /*
                 Event::Unfocus => {
                     win.hide();
                     true
                 }
+                */
                 _ => false,
             });
 
