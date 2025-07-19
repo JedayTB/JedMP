@@ -27,7 +27,7 @@ pub mod popup_window {
             _index: Option<usize>,
         ) -> Self {
             let mut win = window::Window::default();
-            win.set_color(Color::White);
+            win.set_color(Color::Blue);
             win.set_frame(FrameType::BorderBox);
 
             let mut pack = group::Pack::new(1, 1, win.w() - 2, win.h() - 2, None);
@@ -95,15 +95,11 @@ pub mod popup_window {
                     true
                 }
 
-                Event::Unfocus => {
-                    win.hide();
-                    true
-                }
-
                 _ => false,
             });
-            win.set_size(100, _choices.len() as i32 * 25);
+
             pack.set_size(100, _choices.len() as i32 * 25);
+            win.set_size(100, _choices.len() as i32 * 25);
 
             pack.auto_layout();
             win.show();

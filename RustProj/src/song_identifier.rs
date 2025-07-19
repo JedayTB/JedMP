@@ -38,12 +38,17 @@ impl SongIdentifier {
         let mut _song_name_text = text::TextDisplay::default().center_of(&group);
         let mut txt_buffer = TextBuffer::default();
         txt_buffer.set_text(song_name);
+
+        _song_name_text.super_handle_first(false);
         _song_name_text.set_buffer(txt_buffer);
         _song_name_text.set_align(alignment);
         _song_name_text.set_frame(enums::FrameType::NoBox);
+
         group.set_align(alignment);
         group.set_frame(enums::FrameType::GtkUpBox);
+
         let song_clone = song_link.clone();
+        group.super_handle_first(false);
 
         group.handle(move |_widg, event| match event {
             Event::Push => {
@@ -61,6 +66,7 @@ impl SongIdentifier {
             }
             _ => false,
         });
+
         group.end();
         SongIdentifier {
             group,
