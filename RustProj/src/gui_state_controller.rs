@@ -7,20 +7,28 @@ pub mod gui_controller {
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
-    use fltk::{app, button::Button, enums::*, group::Pack, prelude::*, window::Window};
+    use fltk::{app, button::Button, enums::*, group::*, prelude::*, window::Window};
 
     use fltk_theme::{ColorTheme, color_themes};
     use rodio::{OutputStream, Sink};
     use std::cell::RefCell;
     use std::rc::Rc;
 
+    use std::sync::RwLock;
+    static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
+    static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 40;
+    static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
+
     // Functions
+    //
+    //
     pub fn open_window() {
         // GUI Stuff
         //
         // GUI Element creation and positioning
         let app = app::App::default().with_scheme(app::Scheme::Oxy);
         let theme = ColorTheme::new(color_themes::TAN_THEME);
+
         theme.apply();
         let base_window_width = 896;
         let base_window_height = 504;
@@ -82,19 +90,18 @@ pub mod gui_controller {
 
         button_box.end();
         let x_pad_from_lib = 25;
-        let play_queue_box_width = 250;
+        let play_queue_box_width = 350;
         let play_queue_box_height = 300;
 
-        let mut play_queue_box = Flex::default()
-            .column()
+        let mut play_queue_box = Scroll::default()
             .with_size(play_queue_box_width, play_queue_box_height)
             .right_of(&library_list, x_pad_from_lib);
-        play_queue_box.set_frame(FrameType::GtkDownBox);
-        // GUI state variables creation
 
-        // Because Im bad at coding, this must be called before anything to do with
-        // play queue is done.
-        music_file_handler::try_load_cached_music();
+        play_queue_box.set_type(fltk::group::ScrollType::Vertical);
+        play_queue_box.set_frame(FrameType::PlasticDownBox);
+        play_queue_box.end();
+
+        // GUI state variables creation
 
         make_library_list_frames(&mut library_list);
         make_queue_list_frames(&mut play_queue_box);
@@ -203,19 +210,19 @@ pub mod gui_controller {
         }
     }
 
-    fn make_queue_list_frames(play_queue_box: &mut Flex) {
-        let inner_pad = 2;
-        let pq_box_width = play_queue_box.w() - inner_pad;
-        let pq_box_height = play_queue_box.h() - inner_pad;
+    fn make_queue_list_frames(play_queue_box: &mut Scroll) {
+        // yes this is jank as fuck. No I don't care.
+        SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
 
-        let mut pack = Pack::default().with_size(pq_box_width, pq_box_height);
-        pack.set_spacing(inner_pad);
+        let mut pack = Pack::default_fill();
+        pack.make_resizable(true);
         play_queue_box.add(&pack);
+
         let mut i: i32 = 0;
         for queued_song in PLAY_QUEUE.read().unwrap().iter() {
             let song_iden = SongIdentifier::new(
-                pq_box_width,
-                pq_box_height,
+                IN_PLAY_QUEUE_BOX_WIDTH,
+                IN_PLAY_QUEUE_BOX_HEIGHT,
                 &queued_song.song_title,
                 fltk::enums::Align::Center,
                 SongIdentifierType::PLAYQUEUE,
@@ -225,9 +232,38 @@ pub mod gui_controller {
             pack.add(&*song_iden);
             i += 1;
         }
-        play_queue_box.recalc();
-        pack.auto_layout();
+        pack.end();
+
+        play_queue_box.scroll_to(-527, -40);
+        SHARED_PLAY_QUEUE_GUI.write().unwrap().push(pack);
     }
 
-    pub fn append_song_to_queue(_pq_song: PlayQueueSong) {}
+    pub fn append_song_to_queue(pq_song: PlayQueueSong) {
+        let song_iden = SongIdentifier::new(
+            IN_PLAY_QUEUE_BOX_WIDTH,
+            IN_PLAY_QUEUE_BOX_HEIGHT,
+            &pq_song.song_title,
+            fltk::enums::Align::Center,
+            SongIdentifierType::PLAYQUEUE,
+            pq_song.to_owned(),
+            Some(PLAY_QUEUE.read().unwrap().len() - 1),
+        );
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
+        //SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].auto_layout();
+        app::redraw();
+    }
+    pub fn insert_song_to_queue(pq_song: PlayQueueSong, current_index: usize) {
+        let song_iden = SongIdentifier::new(
+            IN_PLAY_QUEUE_BOX_WIDTH,
+            IN_PLAY_QUEUE_BOX_HEIGHT,
+            &pq_song.song_title,
+            fltk::enums::Align::Center,
+            SongIdentifierType::PLAYQUEUE,
+            pq_song.to_owned(),
+            Some(PLAY_QUEUE.read().unwrap().len() - 1),
+        );
+
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);
+        app::redraw();
+    }
 }

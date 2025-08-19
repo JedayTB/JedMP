@@ -19,7 +19,6 @@ pub mod popup_window {
     pub struct PopupWindow {
         win: window::Window,
     }
-
     impl PopupWindow {
         pub fn new(
             pwin_type: &SongIdentifierType,
@@ -27,7 +26,6 @@ pub mod popup_window {
             _index: Option<usize>,
         ) -> Self {
             let mut win = window::Window::default();
-            win.set_color(Color::Blue);
             win.set_frame(FrameType::BorderBox);
 
             let mut pack = group::Pack::new(1, 1, win.w() - 2, win.h() - 2, None);
@@ -51,8 +49,15 @@ pub mod popup_window {
                     let song_: Rc<RefCell<PlayQueueSong>> = Rc::new(RefCell::new(song));
                     let song__ = Rc::clone(&song_);
 
+                    // Ultra ugly but lol
+                    // This is window, so goes
+                    // window, song Ident, Play_queue_box
+
+                    //let mut pq_box: Flex = win.parent().unwrap(); //.parent().unwrap().parent().unwrap();
+
                     add_queue_but.set_callback(move |_| {
                         println!("Appended to pq");
+
                         play_queue_handler::append_to_playqueue(song_.borrow().clone());
 
                         gui_state_controller::gui_controller::append_song_to_queue(
@@ -65,6 +70,10 @@ pub mod popup_window {
                         play_queue_handler::insert_song_into_playqueue(
                             song__.borrow().clone(),
                             *current_index,
+                        );
+                        gui_state_controller::gui_controller::insert_song_to_queue(
+                            song__.borrow().clone(),
+                            current_index.clone(),
                         );
                     });
                 }

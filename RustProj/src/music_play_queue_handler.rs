@@ -5,6 +5,7 @@ pub mod play_queue_handler {
 
     use std::fs::File;
     use std::{io::BufReader, io::Lines, sync::RwLock};
+
     pub static PLAY_QUEUE: RwLock<Vec<PlayQueueSong>> = RwLock::new(Vec::new());
     pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
 

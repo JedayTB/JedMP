@@ -6,6 +6,7 @@ pub mod play_queue_song;
 pub mod popup_window;
 pub mod song_file_metadata_handler;
 pub mod song_identifier;
+
 use std::env;
 use std::fs;
 
@@ -28,6 +29,9 @@ fn main() {
             };
         }
     }
+    // Because Im bad at coding, this must be called before anything to do with
+    // play queue is done.
+    music_cache_handler::music_file_handler::try_load_cached_music();
 
     // Everything happens in gui_controller - because separating logic that far out
     // Is a pain in the ass with this language.
