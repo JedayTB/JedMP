@@ -10,13 +10,7 @@ RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only
 
 TODO List:
 
-
-- Create play_queue, with functionality to change order of songs.
-  - Play_queue functions (append, insert next, remove)
-    Blockers
-    - Popup window has odd unfocusing behavior
-    - Right clicking on text region opens Copy text popup window native to FLTK
-    - GUI Song frames to Play queue visualizer
+- SWITCH MUSIC PLAYER LIBRARY TO VLC.
 - Music library view, scrollable 
   - Shuffle functions into queue
   - Full Music library 
@@ -24,6 +18,7 @@ TODO List:
     - Album separated by artist library
 - Current playing song 
 - Better UI.
+- Configurable UI colors (GUI Placements if ambitious)
 
 ## Starting development
 

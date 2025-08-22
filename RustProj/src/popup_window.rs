@@ -78,9 +78,14 @@ pub mod popup_window {
                     });
                 }
                 SongIdentifierType::PLAYQUEUE => {
+                    let song_: Rc<RefCell<PlayQueueSong>> = Rc::new(RefCell::new(song));
+                    let song__ = Rc::clone(&song_);
+                    let song___ = Rc::clone(&song_);
+
                     _choices = crate::popup_window::popup_window::PLAYQUEUE_OPTIONS
                         .split(",")
                         .collect();
+
                     let mut remove_this_but = Button::default()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
@@ -88,13 +93,30 @@ pub mod popup_window {
                     let mut play_now_but = Button::default()
                         .with_label(_choices[1])
                         .with_size(_choices[1].len() as i32 * 10, 25);
+
                     let mut stop_after_but = Button::default()
                         .with_label(_choices[2])
                         .with_size(_choices[2].len() as i32 * 10, 25);
 
-                    remove_this_but.set_callback(|_| println!("RM: Not implemented yet"));
-                    play_now_but.set_callback(|_| println!("PN: Not implemented yet"));
-                    stop_after_but.set_callback(|_| println!("SA: Not implemented yet"));
+                    remove_this_but.set_callback(move |_| {
+                        play_queue_handler::remove_song_at_index(
+                            song_.borrow().clone().index_in_play_queue,
+                        );
+                        gui_state_controller::gui_controller::remove_song_from_playqueue(
+                            song_.borrow().clone().index_in_play_queue,
+                        );
+                    });
+
+                    play_now_but.set_callback(move |_| {
+                        play_queue_handler::play_song_instant(
+                            song__.borrow().clone().index_in_play_queue,
+                        );
+                        gui_state_controller::gui_controller::sink_play_instant(
+                            song__.borrow().clone(),
+                        );
+                    });
+
+                    stop_after_but.set_callback(move |_| println!("Not Implemented yet"));
                 }
             }
 

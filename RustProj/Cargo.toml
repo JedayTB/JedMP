@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 fltk ={version ="1.5.9", features = ["fltk-bundled"]} 
 fltk-theme = "0.7.9"
+glob = "0.3.3"
 rodio = "0.20.1"
 taglib = "1.0.0"
 whoami = "1.6.0"

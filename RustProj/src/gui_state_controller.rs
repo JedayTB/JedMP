@@ -16,6 +16,8 @@ pub mod gui_controller {
 
     use std::sync::RwLock;
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
+    // Embrace the shit code. Another Global
+    static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 40;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
@@ -107,10 +109,8 @@ pub mod gui_controller {
         make_queue_list_frames(&mut play_queue_box);
 
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Rc::new(RefCell::new(Sink::try_new(&stream_handle).unwrap()));
-        let sink_pause = Rc::clone(&sink);
-        let sink_next = Rc::clone(&sink);
-        let sink_last = Rc::clone(&sink);
+        let s = Sink::try_new(&stream_handle).unwrap();
+        SHARED_SINK.write().unwrap().push(s);
 
         last_song_button.set_callback(move |_| {
             // Goes back a song. Replays song if already at 0th index
@@ -118,9 +118,9 @@ pub mod gui_controller {
 
             let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind].clone();
             let new_source = music_file_handler::load_path(&next_song_path.song_path);
-            sink_last.borrow().stop();
-            sink_last.borrow().append(new_source);
-            sink_last.borrow().play();
+            SHARED_SINK.write().unwrap()[0].stop();
+            SHARED_SINK.write().unwrap()[0].append(new_source);
+            SHARED_SINK.write().unwrap()[0].play();
         });
 
         next_song_button.set_callback(move |_| {
@@ -131,33 +131,35 @@ pub mod gui_controller {
                 // (Future feature)
 
                 // We've reached end of play queue.
-                sink_next.borrow().stop();
+
+                SHARED_SINK.write().unwrap()[0].stop();
             } else {
                 let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind.unwrap()].clone();
                 let next_source = music_file_handler::load_path(&next_song_path.song_path);
 
-                sink_next.borrow().stop();
-                sink_next.borrow().append(next_source);
-                sink_next.borrow().play();
+                SHARED_SINK.write().unwrap()[0].stop();
+                SHARED_SINK.write().unwrap()[0].append(next_source);
+                SHARED_SINK.write().unwrap()[0].play();
             }
         });
 
         pause_song_button.set_callback(move |btn| {
-            if sink.borrow().empty() {
+            if SHARED_SINK.read().unwrap()[0].empty() {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
                 let path = PLAY_QUEUE.read().unwrap()[*ind].clone();
                 let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
-                sink.borrow().stop();
-                sink.borrow().append(source);
-                sink.borrow().play();
+
+                SHARED_SINK.write().unwrap()[0].stop();
+                SHARED_SINK.write().unwrap()[0].append(source);
+                SHARED_SINK.write().unwrap()[0].play();
             }
 
-            if sink_pause.borrow().is_paused() {
-                sink.borrow().play();
+            if SHARED_SINK.read().unwrap()[0].is_paused() {
+                SHARED_SINK.write().unwrap()[0].play();
                 btn.set_label("Pause");
             } else {
-                sink_pause.borrow().pause();
+                SHARED_SINK.write().unwrap()[0].pause();
                 btn.set_label("Play");
             }
         });
@@ -265,5 +267,17 @@ pub mod gui_controller {
 
         SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);
         app::redraw();
+    }
+
+    pub fn sink_play_instant(pq_song: PlayQueueSong) {
+        let source = music_file_handler::load_path(&pq_song.song_path);
+        // Stops playback and clears all appened files
+
+        SHARED_SINK.write().unwrap()[0].stop();
+        SHARED_SINK.write().unwrap()[0].append(source);
+        SHARED_SINK.write().unwrap()[0].play();
+    }
+    pub fn remove_song_from_playqueue(rm_index: usize) {
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].remove_by_index(rm_index as i32);
     }
 }
