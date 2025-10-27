@@ -12,4 +12,10 @@ pub mod song_file_metadata_handler {
             }
         }
     }
+    /*
+    fn get_song_artist(song_path: &String) {
+        let aud_file = taglib::File::new(song_path).expect("Not an audio file");
+        let artist_name = aud_file.tag().unwrap().artist();
+    }
+    */
 }

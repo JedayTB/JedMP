@@ -2,9 +2,9 @@ pub mod music_file_handler {
     // Use statements
     use std::fs::File;
     use std::fs::{self, OpenOptions};
+    use std::time::SystemTime;
 
-    use crate::get_jedmp_musiccache_path;
-    use crate::{get_jedmp_dir, music_play_queue_handler};
+    use crate::{get_jedmp_dir, get_jedmp_musiccache_path, music_play_queue_handler};
     use glob::*;
     use rodio::Decoder;
     use std::io::{BufRead, BufReader, Write};
@@ -17,9 +17,6 @@ pub mod music_file_handler {
         return music_source;
     }
 
-    // FIXME:
-    // Only works with 1 order of depth. Must check if path is
-    // A directory until it finds a file.
     pub fn process_chosen_song_directory(dir_path: &str) {
         let cached_songs_path = &get_jedmp_musiccache_path();
 
@@ -31,10 +28,11 @@ pub mod music_file_handler {
             .expect("Couldn't open music_cache");
 
         // Glob to recursively scan. read_dir only does top level.
-
+        println!("----\t[Master] Starting processing benchmark\t----");
+        let startNanoTime = SystemTime::now();
         let search_pattern = format!("{:?}/*", dir_path.replace("\"", "")).replace("\"", "");
 
-        println!("Search Pattern: {}", search_pattern);
+        println!("[Master] Search Pattern: {}", search_pattern);
         let paths_in_master = glob(&search_pattern).expect("Something went wrong with glob search");
 
         let mut pathb = PathBuf::new();
@@ -50,7 +48,7 @@ pub mod music_file_handler {
                 //max_directory_depth += 1;
 
                 println!(
-                    "Encountered secondary directory {:?}: Scanning and caching",
+                    "[Master] [Encountered secondary directory {:?}: Scanning and caching]",
                     pathstr
                 );
 
@@ -58,7 +56,8 @@ pub mod music_file_handler {
             } else if pathb.is_file() {
                 //TODO:
                 //Change below code to pathstr.ends_with();
-                println!("[Master Dir] Writing {:?}", pathstr);
+                //
+                //println!("[Master Dir] Writing {:?}", pathstr);
                 // Check it's one of our supported song files
                 let extension = pathstr.split(".").last().unwrap_or("").to_owned();
                 //println!("(Found extension) {:?}", extension);
@@ -71,27 +70,43 @@ pub mod music_file_handler {
                 }
             }
         }
+
+        let elapsedTime = SystemTime::now()
+            .duration_since(startNanoTime)
+            .unwrap()
+            .as_millis();
         println!("[Master] Finished Scanning for music.");
+        println!("----\t[Debug] Benchmark for Music Directories Processing. Time:\t{elapsedTime}");
     }
 
     fn scan_directory_to_cached_songs(dir_path: &str, music_cache_file: &mut File) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
+        let mut pathBuf = PathBuf::new();
         for path in pathsindir {
             let song_path = path.unwrap().path().display().to_string();
 
-            let extension = song_path.split(".").last().unwrap_or("").to_owned();
-            //println!("(Found Extension) {:?}", extension);
-            if extension == "mp3"
-                || extension == "flac"
-                || extension == "wav"
-                || extension == "opus"
-            {
-                println!("[Child Dir] Writing {:?}", song_path);
-                writeln!(music_cache_file, "{}", song_path).expect("Couldn't write.");
+            pathBuf.push(&song_path);
+            let isDir = pathBuf.is_dir();
+            //println!("[Scan Dir to Cached] reading {song_path}\t\tis dir {isDir}");
+            if isDir {
+                scan_directory_to_cached_songs(&song_path, music_cache_file);
+            } else {
+                let extension = song_path.split(".").last().unwrap_or("").to_owned();
+                //println!("(Found Extension) {:?}", extension);
+                if extension == "mp3"
+                    || extension == "flac"
+                    || extension == "wav"
+                    || extension == "opus"
+                {
+                    //println!("[Child Dir] Writing {:?}", song_path);
+                    writeln!(music_cache_file, "{}", song_path).expect("Couldn't write.");
+                }
             }
         }
     }
-
+    //TODO:
+    //Refactor to check if both jedmp dir exists
+    //and cached files (maybe accidental delete)
     pub fn try_load_cached_music() {
         let jedmp_directory = get_jedmp_dir();
         let pathb = PathBuf::from(&jedmp_directory);
@@ -103,10 +118,8 @@ pub mod music_file_handler {
         if r == false {
             println!("Jed MP Folder does not exist. Creating and populating...");
             fs::create_dir(&jedmp_directory).expect("Jed MP Dir Created");
-
-            // Do my logic here.
             _cachedfiles = File::create(&cachedfiles_path_str).unwrap();
-            println!("Created cachedfiles.. file");
+            println!("Created cachedmusic file");
         } else {
             println!("Cached Music Found, Loading library...");
             load_cached_songs();

@@ -1,4 +1,7 @@
 pub mod gui_controller {
+    use crate::JButton::JButton::J_Button;
+    use crate::colors_handler::color_handler::COLOR_DICTIONARY;
+    use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::music_cache_handler::music_file_handler;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE, PLAY_QUEUE_INDEX, decrement_play_queue_index, increment_play_queue_index,
@@ -7,14 +10,15 @@ pub mod gui_controller {
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::group::Flex;
-    use fltk::{app, button::Button, enums::*, group::*, prelude::*, window::Window};
+    use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
-    use fltk_theme::{ColorTheme, color_themes};
+    use fltk_theme::{SchemeType, WidgetScheme};
     use rodio::{OutputStream, Sink};
     use std::cell::RefCell;
     use std::rc::Rc;
 
     use std::sync::RwLock;
+
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
     // Embrace the shit code. Another Global
     static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
@@ -28,10 +32,11 @@ pub mod gui_controller {
         // GUI Stuff
         //
         // GUI Element creation and positioning
-        let app = app::App::default().with_scheme(app::Scheme::Oxy);
-        let theme = ColorTheme::new(color_themes::TAN_THEME);
+        let app = app::App::default(); //.with_scheme(app::Scheme::Oxy);
 
-        theme.apply();
+        let widgetscheme = WidgetScheme::new(SchemeType::Aqua);
+        widgetscheme.apply();
+
         let base_window_width = 896;
         let base_window_height = 504;
 
@@ -39,17 +44,15 @@ pub mod gui_controller {
         //let general_x_pad = 15;
 
         let mut wind = Window::new(0, 0, base_window_width, base_window_height, "JedMP");
-
+        wind.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
         let top_bar_height = 25;
 
         // Top Bar
-        let mut top_bar_group = Flex::default()
+        let top_bar_group = Flex::default()
             .with_size(base_window_width, top_bar_height)
             .with_pos(0, 0);
 
-        top_bar_group.set_frame(FrameType::GtkDownFrame);
-
-        let mut add_music_directory_button = Button::default()
+        let mut add_music_directory_button = J_Button::new()
             .with_size(base_window_width / 12, top_bar_height)
             .with_label("Choose Music directory");
 
@@ -60,16 +63,18 @@ pub mod gui_controller {
 
         let library_list_pos_x = 0;
         let library_list_pos_y = 0;
-        let mut library_list = Flex::default()
-            .column()
+
+        let mut library_list = Scroll::default()
             .with_size(library_list_width, library_list_height)
             .with_pos(
                 library_list_pos_x,
                 library_list_pos_y + general_y_pad + top_bar_height,
             );
 
+        //library_list.set_type(fltk::group::ScrollType::Vertical);
         library_list.set_frame(FrameType::GtkDownFrame);
-
+        library_list
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
         let shared_library_list = Rc::new(RefCell::new(library_list.clone()));
         library_list.end();
 
@@ -86,9 +91,9 @@ pub mod gui_controller {
             )
             .row();
 
-        let mut last_song_button = Button::default().with_label("<");
-        let mut pause_song_button = Button::default().with_label("Pause");
-        let mut next_song_button = Button::default().with_label(">");
+        let mut last_song_button = J_Button::new().with_label("<");
+        let mut pause_song_button = J_Button::new().with_label("Pause");
+        let mut next_song_button = J_Button::new().with_label(">");
 
         button_box.end();
         let x_pad_from_lib = 25;
@@ -101,6 +106,9 @@ pub mod gui_controller {
 
         play_queue_box.set_type(fltk::group::ScrollType::Vertical);
         play_queue_box.set_frame(FrameType::PlasticDownBox);
+
+        play_queue_box
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
         play_queue_box.end();
 
         // GUI state variables creation
@@ -111,7 +119,6 @@ pub mod gui_controller {
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let s = Sink::try_new(&stream_handle).unwrap();
         SHARED_SINK.write().unwrap().push(s);
-
         last_song_button.set_callback(move |_| {
             // Goes back a song. Replays song if already at 0th index
             let play_ind = decrement_play_queue_index().unwrap_or(0);
@@ -122,7 +129,6 @@ pub mod gui_controller {
             SHARED_SINK.write().unwrap()[0].append(new_source);
             SHARED_SINK.write().unwrap()[0].play();
         });
-
         next_song_button.set_callback(move |_| {
             let play_ind = increment_play_queue_index();
 
@@ -197,7 +203,13 @@ pub mod gui_controller {
         app.run().unwrap();
     }
 
-    fn make_library_list_frames(library_list_box: &mut Flex) {
+    fn make_library_list_frames(library_list_box: &mut Scroll) {
+        library_list_box.clear();
+
+        let mut pack = Pack::default_fill();
+        pack.make_resizable(true);
+        library_list_box.add(&pack);
+
         for song in PLAY_QUEUE.read().unwrap().iter() {
             let si = SongIdentifier::new(
                 100,
@@ -208,8 +220,10 @@ pub mod gui_controller {
                 song.to_owned(),
                 None,
             );
-            library_list_box.add(&*si);
+            pack.add(&*si);
         }
+
+        app::redraw();
     }
 
     fn make_queue_list_frames(play_queue_box: &mut Scroll) {

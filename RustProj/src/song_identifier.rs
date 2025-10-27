@@ -1,7 +1,11 @@
 // Song link IS used.. Stupid.
 #![allow(dead_code)]
 
-use crate::{play_queue_song::PlayQueueSong, popup_window};
+use crate::{
+    colors_handler::color_handler::{COLOR_DICTIONARY, JedMP_Colors},
+    play_queue_song::PlayQueueSong,
+    popup_window,
+};
 use fltk::{
     enums::{Align, Event},
     group::Flex,
@@ -42,10 +46,14 @@ impl SongIdentifier {
         _song_name_text.super_handle_first(false);
         _song_name_text.set_buffer(txt_buffer);
         _song_name_text.set_align(alignment);
-        _song_name_text.set_frame(enums::FrameType::NoBox);
-
+        //_song_name_text.set_frame(enums::FrameType::NoBox);
+        _song_name_text
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Song_iden_bg_color as usize]);
+        _song_name_text.set_text_color(
+            COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Song_text_color as usize],
+        );
         group.set_align(alignment);
-        group.set_frame(enums::FrameType::GtkUpBox);
+        //group.set_frame(enums::FrameType::NoBox);
 
         let song_clone = song_link.clone();
         group.super_handle_first(false);

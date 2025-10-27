@@ -1,4 +1,8 @@
 // Modules
+#![allow(non_snake_case)]
+
+pub mod JButton;
+pub mod colors_handler;
 pub mod gui_state_controller;
 pub mod music_cache_handler;
 pub mod music_play_queue_handler;
@@ -6,11 +10,15 @@ pub mod play_queue_song;
 pub mod popup_window;
 pub mod song_file_metadata_handler;
 pub mod song_identifier;
-
 use std::env;
 use std::fs;
 
 use crate::gui_state_controller::gui_controller;
+
+//TODO:
+//Rewrite jedmpdir handling from music_cache_handler
+//to here and let music_cache_handler / colors_handler
+//Handle the creation of their indiviual files.
 fn main() {
     // For mostly debugging.
 
@@ -29,12 +37,12 @@ fn main() {
             };
         }
     }
-    // Because Im bad at coding, this must be called before anything to do with
-    // play queue is done.
     music_cache_handler::music_file_handler::try_load_cached_music();
 
-    // Everything happens in gui_controller - because separating logic that far out
-    // Is a pain in the ass with this language.
+    colors_handler::color_handler::try_load_mastercolorrc();
+
+    // Most things happen in gui_controller.
+    // Just to keep GUI Events and logic close, otherwise it's a pain.
     gui_controller::open_window();
 }
 
@@ -46,4 +54,9 @@ fn get_jedmp_dir() -> String {
 fn get_jedmp_musiccache_path() -> String {
     let jedmpdir = get_jedmp_dir();
     return format!("{jedmpdir}/music_cache");
+}
+fn get_jedmp_master_color_file_path() -> String {
+    let jedmpdir = get_jedmp_dir();
+
+    return format!("{jedmpdir}/master_colorrc");
 }

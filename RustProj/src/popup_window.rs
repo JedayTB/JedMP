@@ -80,7 +80,6 @@ pub mod popup_window {
                 SongIdentifierType::PLAYQUEUE => {
                     let song_: Rc<RefCell<PlayQueueSong>> = Rc::new(RefCell::new(song));
                     let song__ = Rc::clone(&song_);
-                    let song___ = Rc::clone(&song_);
 
                     _choices = crate::popup_window::popup_window::PLAYQUEUE_OPTIONS
                         .split(",")
