@@ -12,6 +12,7 @@ pub mod song_file_metadata_handler;
 pub mod song_identifier;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 
 use crate::gui_state_controller::gui_controller;
 
@@ -37,6 +38,10 @@ fn main() {
             };
         }
     }
+
+    // Handle if JedMPDir exists
+    handle_jedmp_directory();
+
     music_cache_handler::music_file_handler::try_load_cached_music();
 
     colors_handler::color_handler::try_load_mastercolorrc();
@@ -44,6 +49,18 @@ fn main() {
     // Most things happen in gui_controller.
     // Just to keep GUI Events and logic close, otherwise it's a pain.
     gui_controller::open_window();
+}
+
+fn handle_jedmp_directory() {
+    let jed_dir_path_buf = PathBuf::from(get_jedmp_dir());
+
+    if jed_dir_path_buf
+        .try_exists()
+        .expect("Couldn't check validation of jedmpdir")
+        == false
+    {
+        fs::create_dir(jed_dir_path_buf).expect("Couldn't create Jed MP Directory");
+    }
 }
 
 fn get_jedmp_dir() -> String {

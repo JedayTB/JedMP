@@ -6,6 +6,7 @@ pub mod popup_window {
     use fltk::{button::Button, enums::*, prelude::*, *};
 
     use crate::{
+        JButton::JButton,
         gui_state_controller,
         music_play_queue_handler::play_queue_handler::{self, PLAY_QUEUE_INDEX},
         play_queue_song::PlayQueueSong,
@@ -85,15 +86,15 @@ pub mod popup_window {
                         .split(",")
                         .collect();
 
-                    let mut remove_this_but = Button::default()
+                    let mut remove_this_but = JButton::J_Button::new()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
 
-                    let mut play_now_but = Button::default()
+                    let mut play_now_but = JButton::J_Button::new()
                         .with_label(_choices[1])
                         .with_size(_choices[1].len() as i32 * 10, 25);
 
-                    let mut stop_after_but = Button::default()
+                    let mut stop_after_but = JButton::J_Button::new()
                         .with_label(_choices[2])
                         .with_size(_choices[2].len() as i32 * 10, 25);
 

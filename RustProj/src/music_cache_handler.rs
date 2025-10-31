@@ -4,7 +4,7 @@ pub mod music_file_handler {
     use std::fs::{self, OpenOptions};
     use std::time::SystemTime;
 
-    use crate::{get_jedmp_dir, get_jedmp_musiccache_path, music_play_queue_handler};
+    use crate::{get_jedmp_musiccache_path, music_play_queue_handler};
     use glob::*;
     use rodio::Decoder;
     use std::io::{BufRead, BufReader, Write};
@@ -104,21 +104,19 @@ pub mod music_file_handler {
             }
         }
     }
-    //TODO:
-    //Refactor to check if both jedmp dir exists
-    //and cached files (maybe accidental delete)
-    pub fn try_load_cached_music() {
-        let jedmp_directory = get_jedmp_dir();
-        let pathb = PathBuf::from(&jedmp_directory);
-        let mut _cachedfiles: File;
-        let cachedfiles_path_str = format!("{jedmp_directory}/music_cache");
 
-        let m = pathb.try_exists();
-        let r = m.expect("Path Exists");
-        if r == false {
+    pub fn try_load_cached_music() {
+        let cachedfiles_path_str = get_jedmp_musiccache_path();
+
+        let cf_pathb = PathBuf::from(&cachedfiles_path_str);
+
+        let cfr = cf_pathb
+            .try_exists()
+            .expect("Smth went wrong checking if path exist");
+
+        if cfr == false {
             println!("Jed MP Folder does not exist. Creating and populating...");
-            fs::create_dir(&jedmp_directory).expect("Jed MP Dir Created");
-            _cachedfiles = File::create(&cachedfiles_path_str).unwrap();
+            File::create(&cachedfiles_path_str).unwrap();
             println!("Created cachedmusic file");
         } else {
             println!("Cached Music Found, Loading library...");

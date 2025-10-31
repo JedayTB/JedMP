@@ -2,7 +2,7 @@
 pub mod JButton {
 
     use crate::colors_handler::color_handler::*;
-    use fltk::{button::Button, prelude::*, *};
+    use fltk::{button::Button, enums::Event, prelude::*, *};
     pub struct J_Button {
         pub but: Button,
     }
@@ -15,6 +15,20 @@ pub mod JButton {
             but.set_selection_color(
                 COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Button_hover_color as usize],
             );
+
+            //TODO:
+            //Set text hover colour
+            but.handle(move |_button, ev: Event| match ev {
+                Event::Enter => {
+                    //println!("Entered");
+                    true
+                }
+                Event::Leave => {
+                    //println!("Exited");
+                    true
+                }
+                _ => false,
+            });
             Self { but }
         }
     }
