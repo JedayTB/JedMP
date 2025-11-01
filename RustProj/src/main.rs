@@ -8,7 +8,6 @@ pub mod music_cache_handler;
 pub mod music_play_queue_handler;
 pub mod play_queue_song;
 pub mod popup_window;
-pub mod song_file_metadata_handler;
 pub mod song_identifier;
 use std::env;
 use std::fs;

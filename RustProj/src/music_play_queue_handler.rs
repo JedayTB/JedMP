@@ -1,6 +1,5 @@
 pub mod play_queue_handler {
     use crate::play_queue_song::PlayQueueSong;
-    use crate::song_file_metadata_handler;
 
     use std::fs::File;
     use std::thread::JoinHandle;
@@ -37,12 +36,17 @@ pub mod play_queue_handler {
             // Read necessary information
 
             for line in cfl_vec {
-                let song_path = line;
-                let song_title =
-                    song_file_metadata_handler::song_file_metadata_handler::get_song_title(
-                        &song_path,
-                    );
-                let plq_song = PlayQueueSong::new(song_path, song_title, i as usize);
+                let entry = line;
+
+                let entries: Vec<&str> = entry.split("\x00").collect();
+
+                let plq_song = PlayQueueSong::new(
+                    entries[0].to_owned(),
+                    entries[1].to_owned(),
+                    entries[2].to_owned(),
+                    entries[3].to_owned(),
+                    i as usize,
+                );
 
                 i += 1;
                 tempPQ.push(plq_song);
@@ -83,14 +87,17 @@ pub mod play_queue_handler {
             let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
             let cfl = aPQ.clone();
             while i < end_ind {
-                let song_path = cfl[i].clone();
-                let song_title =
-                    song_file_metadata_handler::song_file_metadata_handler::get_song_title(
-                        &song_path,
-                    );
+                let entry = cfl[i].clone();
 
-                //println!("[t2] pushed song {i} - {song_title}");
-                let plq_song = PlayQueueSong::new(song_path.to_owned(), song_title, i as usize);
+                let entries: Vec<&str> = entry.split("\x00").collect();
+
+                let plq_song = PlayQueueSong::new(
+                    entries[0].to_owned(),
+                    entries[1].to_owned(),
+                    entries[2].to_owned(),
+                    entries[3].to_owned(),
+                    i as usize,
+                );
 
                 i += 1;
                 tempPQ.push(plq_song);
@@ -100,6 +107,7 @@ pub mod play_queue_handler {
         });
         return joinHandle;
     }
+
     // perhaps not best to take in a copy of the struct.
     // But im not sure if the PLAY_QUEUE variable would be satisfied with a reference
     // design speaking as well, it's probably best the contents of PLAY_QUEUE aren't references
@@ -108,7 +116,6 @@ pub mod play_queue_handler {
     // NOTE::
     // Must adjust the songs within the play_queue to match their index
     // This must be done for each song after an insert and removal.
-    //
 
     fn adjust_playqueue(adjust_after_index: i32) {
         let mut pq = PLAY_QUEUE.write().unwrap();
@@ -160,6 +167,5 @@ pub mod play_queue_handler {
 
     pub fn remove_song_at_index(rm_ind: usize) {
         PLAY_QUEUE.write().unwrap().remove(rm_ind);
-        adjust_playqueue(rm_ind as i32);
     }
 }

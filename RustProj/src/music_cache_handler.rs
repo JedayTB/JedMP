@@ -20,8 +20,6 @@ pub mod music_file_handler {
     pub fn process_chosen_song_directory(dir_path: &str) {
         let cached_songs_path = &get_jedmp_musiccache_path();
 
-        //let mut max_directory_depth: i32 = 0;
-
         let mut music_cache_file = OpenOptions::new()
             .append(true)
             .open(cached_songs_path)
@@ -45,8 +43,6 @@ pub mod music_file_handler {
             // read sub dir, while pathb.is_dir is true, keep going until find non directory
             // add all directories to dir_to_search vec,
             if pathb.is_dir() {
-                //max_directory_depth += 1;
-
                 println!(
                     "[Master] [Encountered secondary directory {:?}: Scanning and caching]",
                     pathstr
@@ -54,20 +50,9 @@ pub mod music_file_handler {
 
                 scan_directory_to_cached_songs(&pathstr, &mut music_cache_file);
             } else if pathb.is_file() {
-                //TODO:
-                //Change below code to pathstr.ends_with();
-                //
                 //println!("[Master Dir] Writing {:?}", pathstr);
-                // Check it's one of our supported song files
-                let extension = pathstr.split(".").last().unwrap_or("").to_owned();
-                //println!("(Found extension) {:?}", extension);
-                if extension == "mp3"
-                    || extension == "flac"
-                    || extension == "wav"
-                    || extension == "opus"
-                {
-                    writeln!(music_cache_file, "{}", pathstr).expect("Write failed.");
-                }
+                // Check it's one of our supported song types
+                write_song_to_cache(pathstr, &mut music_cache_file);
             }
         }
 
@@ -79,6 +64,42 @@ pub mod music_file_handler {
         println!("----\t[Debug] Benchmark for Music Directories Processing. Time:\t{elapsedTime}");
     }
 
+    fn write_song_to_cache(pathstr: String, music_cache_file: &mut File) {
+        let extension = pathstr.split(".").last().unwrap_or("").to_owned();
+        //println!("(Found extension) {:?}", extension);
+
+        if extension == "mp3" || extension == "flac" || extension == "wav" || extension == "opus" {
+            let tF = taglib::File::new(&pathstr).expect("Coudln't open song file as taglib file");
+
+            let album = tF
+                .tag()
+                .unwrap()
+                .album()
+                .unwrap_or("".to_owned())
+                .to_owned();
+            let artist = tF
+                .tag()
+                .unwrap()
+                .artist()
+                .unwrap_or("".to_owned())
+                .to_owned();
+            let mut title: String = tF
+                .tag()
+                .unwrap()
+                .title()
+                .unwrap_or("".to_owned())
+                .to_owned();
+            if title == "" {
+                title = pathstr.split("/").last().unwrap().to_owned();
+            }
+            writeln!(
+                music_cache_file,
+                "{pathstr}\x00{title}\x00{album}\x00{artist}"
+            )
+            .expect("Write failed.");
+        }
+    }
+
     fn scan_directory_to_cached_songs(dir_path: &str, music_cache_file: &mut File) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
         let mut pathBuf = PathBuf::new();
@@ -86,21 +107,11 @@ pub mod music_file_handler {
             let song_path = path.unwrap().path().display().to_string();
 
             pathBuf.push(&song_path);
-            let isDir = pathBuf.is_dir();
-            //println!("[Scan Dir to Cached] reading {song_path}\t\tis dir {isDir}");
-            if isDir {
+
+            if pathBuf.is_dir() {
                 scan_directory_to_cached_songs(&song_path, music_cache_file);
             } else {
-                let extension = song_path.split(".").last().unwrap_or("").to_owned();
-                //println!("(Found Extension) {:?}", extension);
-                if extension == "mp3"
-                    || extension == "flac"
-                    || extension == "wav"
-                    || extension == "opus"
-                {
-                    //println!("[Child Dir] Writing {:?}", song_path);
-                    writeln!(music_cache_file, "{}", song_path).expect("Couldn't write.");
-                }
+                write_song_to_cache(song_path, music_cache_file);
             }
         }
     }
@@ -110,11 +121,11 @@ pub mod music_file_handler {
 
         let cf_pathb = PathBuf::from(&cachedfiles_path_str);
 
-        let cfr = cf_pathb
+        if cf_pathb
             .try_exists()
-            .expect("Smth went wrong checking if path exist");
-
-        if cfr == false {
+            .expect("Smth went wrong checking if path exist")
+            == false
+        {
             println!("Jed MP Folder does not exist. Creating and populating...");
             File::create(&cachedfiles_path_str).unwrap();
             println!("Created cachedmusic file");
@@ -134,8 +145,10 @@ pub mod music_file_handler {
         if cached_music_file_length == 0 {
             println!("There's no cached music! Choose a directory to load.");
         }
+
         let buf_reader = BufReader::new(cached_music_file);
         let string_it = buf_reader.lines();
+
         music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
     }
 }
