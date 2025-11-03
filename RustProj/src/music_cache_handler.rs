@@ -28,11 +28,10 @@ pub mod music_file_handler {
         // Glob to recursively scan. read_dir only does top level.
         println!("----\t[Master] Starting processing benchmark\t----");
         let startNanoTime = SystemTime::now();
-        let search_pattern = format!("{:?}/*", dir_path.replace("\"", "")).replace("\"", "");
 
+        let search_pattern = format!("{:?}/*", dir_path.replace("\"", "")).replace("\"", "");
         println!("[Master] Search Pattern: {}", search_pattern);
         let paths_in_master = glob(&search_pattern).expect("Something went wrong with glob search");
-
         let mut pathb = PathBuf::new();
 
         for path in paths_in_master {

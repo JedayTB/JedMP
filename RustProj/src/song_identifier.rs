@@ -21,6 +21,7 @@ pub enum SongIdentifierType {
 // Having PlayQueueSong is bad. But because Library views haven't had much work, its somewhat
 // necessary.
 // Add to group by using group.add(&*SongIdentifier), because it needs to be dereferenced
+#[derive(Debug)]
 pub struct SongIdentifier {
     group: Flex,
     song_link: PlayQueueSong,
