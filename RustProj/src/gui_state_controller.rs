@@ -25,13 +25,7 @@ pub mod gui_controller {
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
     // Functions
-    fn tab_close_cb(g: &mut impl GroupExt) {
-        if app::callback_reason() == CallbackReason::Closed {
-            let mut parent = g.parent().unwrap();
-            parent.remove(g);
-            app::redraw();
-        }
-    }
+
     pub fn open_window() {
         // GUI Stuff
         //
@@ -50,175 +44,181 @@ pub mod gui_controller {
             .with_size(base_window_width, base_window_height)
             .with_label("JedMP");
         wind.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
-        let row = Flex::default_fill().row();
+        let row = Flex::default()
+            .with_size(base_window_width, base_window_height)
+            .row();
         let mut tabs = Tabs::default();
-        tabs.set_tab_align(Align::Right);
         tabs.handle_overflow(TabsOverflow::Compress);
+        tabs.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
 
-        {
-            let mut col1 = Flex::default().with_label("\t\ttab1").column();
-            col1.set_trigger(CallbackTrigger::Closed);
-            col1.set_callback(tab_close_cb);
-            // widgets
-            let top_bar_height = 25;
+        let mut main_lib_tab = Group::default()
+            .with_label("Full Library")
+            .with_size(base_window_width, base_window_height);
+        main_lib_tab
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
+        //  Add below for closable tabs
+        //  col1.set_trigger(CallbackTrigger::Closed);
+        //  col1.set_callback(tab_close_cb);
 
-            // Top Bar
-            let top_bar_group = Flex::default()
-                .with_size(base_window_width, top_bar_height)
-                .with_pos(0, 0);
+        let top_bar_height = 25;
 
-            let mut add_music_directory_button = J_Button::new()
-                .with_size(base_window_width / 12, top_bar_height)
-                .with_label("Choose Music directory");
+        // Top Bar
+        let top_bar_group = Flex::default()
+            .with_size(base_window_width, top_bar_height)
+            .with_pos(0, 0);
 
-            top_bar_group.end();
+        let mut add_music_directory_button = J_Button::new()
+            .with_size(base_window_width / 12, top_bar_height)
+            .with_label("Choose Music directory");
 
-            let library_list_width = 500;
-            let library_list_height = 300;
+        top_bar_group.end();
 
-            let library_list_pos_x = 0;
-            let library_list_pos_y = 0;
+        let library_list_width = 500;
+        let library_list_height = 300;
 
-            let mut library_list = Scroll::default()
-                .with_size(library_list_width, library_list_height)
-                .with_pos(
-                    library_list_pos_x,
-                    library_list_pos_y + general_y_pad + top_bar_height,
-                );
+        let library_list_pos_x = 0;
+        let library_list_pos_y = 0;
 
-            //library_list.set_type(fltk::group::ScrollType::Vertical);
-            library_list.set_frame(FrameType::GtkDownFrame);
-            library_list.set_color(
-                COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize],
+        let mut library_list = Scroll::default()
+            .with_size(library_list_width, library_list_height)
+            .with_pos(
+                library_list_pos_x,
+                library_list_pos_y + general_y_pad + top_bar_height,
             );
-            library_list.end();
-            let shared_library_list = rc::Rc::new(RefCell::new(library_list.clone()));
 
-            let button_box_height = base_window_height / 8;
-            let button_box_width = base_window_width;
-            let button_box_pos_y = wind.h();
-            let button_box_pos_x = base_window_width / 2;
+        //library_list.set_type(fltk::group::ScrollType::Vertical);
+        library_list.set_frame(FrameType::GtkDownFrame);
+        library_list
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
+        library_list.end();
+        let shared_library_list = rc::Rc::new(RefCell::new(library_list.clone()));
 
-            let button_box = Flex::default()
-                .with_size(button_box_width, button_box_height)
-                .with_pos(
-                    button_box_pos_x - button_box_width / 2,
-                    button_box_pos_y - button_box_height,
-                )
-                .row();
+        let button_box_height = base_window_height / 8;
+        let button_box_width = base_window_width;
+        let button_box_pos_y = wind.h();
+        let button_box_pos_x = base_window_width / 2;
 
-            let mut last_song_button = J_Button::new().with_label("<");
-            let mut pause_song_button = J_Button::new().with_label("Pause");
-            let mut next_song_button = J_Button::new().with_label(">");
+        let button_box = Flex::default()
+            .with_size(button_box_width, button_box_height)
+            .with_pos(
+                button_box_pos_x - button_box_width / 2,
+                button_box_pos_y - button_box_height,
+            )
+            .row();
 
-            button_box.end();
-            let x_pad_from_lib = 25;
-            let play_queue_box_width = 350;
-            let play_queue_box_height = 300;
+        let mut last_song_button = J_Button::new().with_label("<");
+        let mut pause_song_button = J_Button::new().with_label("Pause");
+        let mut next_song_button = J_Button::new().with_label(">");
 
-            let mut play_queue_box = Scroll::default()
-                .with_size(play_queue_box_width, play_queue_box_height)
-                .right_of(&library_list, x_pad_from_lib);
+        button_box.end();
+        let x_pad_from_lib = 25;
+        let play_queue_box_width = 350;
+        let play_queue_box_height = 300;
 
-            play_queue_box.set_type(fltk::group::ScrollType::Vertical);
-            play_queue_box.set_frame(FrameType::PlasticDownBox);
+        let mut play_queue_box = Scroll::default()
+            .with_size(play_queue_box_width, play_queue_box_height)
+            .right_of(&library_list, x_pad_from_lib);
 
-            play_queue_box.set_color(
-                COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize],
-            );
-            play_queue_box.end();
+        play_queue_box.set_type(fltk::group::ScrollType::Vertical);
+        play_queue_box.set_frame(FrameType::PlasticDownBox);
 
-            // GUI state variables creation
+        play_queue_box
+            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
+        play_queue_box.end();
 
-            make_library_list_frames(&mut library_list);
-            make_queue_list_frames(&mut play_queue_box);
+        // GUI state variables creation
 
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let s = Sink::try_new(&stream_handle).unwrap();
-            SHARED_SINK.write().unwrap().push(s);
-            last_song_button.set_callback(move |_| {
-                // Goes back a song. Replays song if already at 0th index
-                let play_ind = decrement_play_queue_index().unwrap_or(0);
-                let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind].clone();
-                let new_source = music_file_handler::load_path(&next_song_path.song_path);
+        make_library_list_frames(&mut library_list);
+        make_queue_list_frames(&mut play_queue_box);
+
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let s = Sink::try_new(&stream_handle).unwrap();
+        SHARED_SINK.write().unwrap().push(s);
+        last_song_button.set_callback(move |_| {
+            // Goes back a song. Replays song if already at 0th index
+            let play_ind = decrement_play_queue_index().unwrap_or(0);
+            let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind].clone();
+            let new_source = music_file_handler::load_path(&next_song_path.song_path);
+            SHARED_SINK.write().unwrap()[0].stop();
+            SHARED_SINK.write().unwrap()[0].append(new_source);
+            SHARED_SINK.write().unwrap()[0].play();
+        });
+        next_song_button.set_callback(move |_| {
+            let play_ind = increment_play_queue_index();
+
+            if play_ind == None {
+                // Other logic here, check if replay playlist is on for example.
+                // (Future feature)
+
+                // We've reached end of play queue.
+
                 SHARED_SINK.write().unwrap()[0].stop();
-                SHARED_SINK.write().unwrap()[0].append(new_source);
+            } else {
+                let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind.unwrap()].clone();
+                let next_source = music_file_handler::load_path(&next_song_path.song_path);
+
+                SHARED_SINK.write().unwrap()[0].stop();
+                SHARED_SINK.write().unwrap()[0].append(next_source);
                 SHARED_SINK.write().unwrap()[0].play();
-            });
-            next_song_button.set_callback(move |_| {
-                let play_ind = increment_play_queue_index();
+            }
+        });
 
-                if play_ind == None {
-                    // Other logic here, check if replay playlist is on for example.
-                    // (Future feature)
+        pause_song_button.set_callback(move |btn| {
+            if SHARED_SINK.read().unwrap()[0].empty() {
+                let ind = PLAY_QUEUE_INDEX.read().unwrap();
+                let path = PLAY_QUEUE.read().unwrap()[*ind].clone();
+                let source = music_file_handler::load_path(&path.song_path);
+                // Stops playback and clears all appened files
 
-                    // We've reached end of play queue.
+                SHARED_SINK.write().unwrap()[0].stop();
+                SHARED_SINK.write().unwrap()[0].append(source);
+                SHARED_SINK.write().unwrap()[0].play();
+            }
 
-                    SHARED_SINK.write().unwrap()[0].stop();
-                } else {
-                    let next_song_path = PLAY_QUEUE.read().unwrap()[play_ind.unwrap()].clone();
-                    let next_source = music_file_handler::load_path(&next_song_path.song_path);
+            if SHARED_SINK.read().unwrap()[0].is_paused() {
+                SHARED_SINK.write().unwrap()[0].play();
+                btn.set_label("Pause");
+            } else {
+                SHARED_SINK.write().unwrap()[0].pause();
+                btn.set_label("Play");
+            }
+        });
 
-                    SHARED_SINK.write().unwrap()[0].stop();
-                    SHARED_SINK.write().unwrap()[0].append(next_source);
-                    SHARED_SINK.write().unwrap()[0].play();
+        add_music_directory_button.set_callback(move |_| {
+            let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
+            nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
+            match nfc.try_show() {
+                Err(e) => {
+                    eprintln!("{}", e);
+                    //None
                 }
-            });
 
-            pause_song_button.set_callback(move |btn| {
-                if SHARED_SINK.read().unwrap()[0].empty() {
-                    let ind = PLAY_QUEUE_INDEX.read().unwrap();
-                    let path = PLAY_QUEUE.read().unwrap()[*ind].clone();
-                    let source = music_file_handler::load_path(&path.song_path);
-                    // Stops playback and clears all appened files
+                Ok(a) => match a {
+                    dialog::NativeFileChooserAction::Success => {
+                        println!("Valid Directory Chosen, processing for music..");
+                        let directory = nfc.filename();
+                        let strname = directory
+                            .to_str()
+                            .expect("Directory doesn't have a string name?..");
 
-                    SHARED_SINK.write().unwrap()[0].stop();
-                    SHARED_SINK.write().unwrap()[0].append(source);
-                    SHARED_SINK.write().unwrap()[0].play();
-                }
+                        music_file_handler::process_chosen_song_directory(strname);
+                        music_file_handler::load_cached_songs();
 
-                if SHARED_SINK.read().unwrap()[0].is_paused() {
-                    SHARED_SINK.write().unwrap()[0].play();
-                    btn.set_label("Pause");
-                } else {
-                    SHARED_SINK.write().unwrap()[0].pause();
-                    btn.set_label("Play");
-                }
-            });
-
-            add_music_directory_button.set_callback(move |_| {
-                let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
-                nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
-                match nfc.try_show() {
-                    Err(e) => {
-                        eprintln!("{}", e);
-                        //None
+                        make_library_list_frames(&mut *shared_library_list.borrow_mut());
                     }
+                    dialog::NativeFileChooserAction::Cancelled => {
+                        println!("Directory Pick cancelled");
+                    }
+                },
+            }
+        });
+        //main_lib_tab.end();
 
-                    Ok(a) => match a {
-                        dialog::NativeFileChooserAction::Success => {
-                            println!("Valid Directory Chosen, processing for music..");
-                            let directory = nfc.filename();
-                            let strname = directory
-                                .to_str()
-                                .expect("Directory doesn't have a string name?..");
-
-                            music_file_handler::process_chosen_song_directory(strname);
-                            music_file_handler::load_cached_songs();
-
-                            make_library_list_frames(&mut *shared_library_list.borrow_mut());
-                        }
-                        dialog::NativeFileChooserAction::Cancelled => {
-                            println!("Directory Pick cancelled");
-                        }
-                    },
-                }
-            });
-            col1.end();
-        }
         tabs.end();
         tabs.auto_layout();
+
         row.end();
+
         wind.end();
         wind.make_resizable(true);
         wind.show();
@@ -229,7 +229,8 @@ pub mod gui_controller {
     fn make_library_list_frames(library_list_box: &mut Scroll) {
         library_list_box.clear();
 
-        let mut pack = Pack::default_fill();
+        let mut pack =
+            Pack::default().with_size(library_list_box.width(), library_list_box.height()); //_fill();
         pack.make_resizable(true);
         library_list_box.add(&pack);
 
@@ -253,7 +254,7 @@ pub mod gui_controller {
         // yes this is jank as fuck. No I don't care.
         SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
 
-        let mut pack = Pack::default_fill();
+        let mut pack = Pack::default().with_size(play_queue_box.width(), play_queue_box.height()); //_fill();
         pack.make_resizable(true);
         play_queue_box.add(&pack);
 
@@ -276,7 +277,13 @@ pub mod gui_controller {
         play_queue_box.scroll_to(-527, -40);
         SHARED_PLAY_QUEUE_GUI.write().unwrap().push(pack);
     }
-
+    fn tab_close_cb(g: &mut impl GroupExt) {
+        if app::callback_reason() == CallbackReason::Closed {
+            let mut parent = g.parent().unwrap();
+            parent.remove(g);
+            app::redraw();
+        }
+    }
     pub fn append_song_to_queue(pq_song: PlayQueueSong) {
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,
@@ -288,7 +295,6 @@ pub mod gui_controller {
             Some(PLAY_QUEUE.read().unwrap().len() - 1),
         );
         SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
-        //SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].auto_layout();
         app::redraw();
     }
     pub fn insert_song_to_queue(pq_song: PlayQueueSong, current_index: usize) {
