@@ -21,10 +21,9 @@ pub mod gui_controller {
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
     // Embrace the shit code. Another Global
     static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
+
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 40;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
-
-    // Functions
 
     pub fn open_window() {
         // GUI Stuff
@@ -47,6 +46,7 @@ pub mod gui_controller {
         let row = Flex::default()
             .with_size(base_window_width, base_window_height)
             .row();
+
         let mut tabs = Tabs::default();
         tabs.handle_overflow(TabsOverflow::Compress);
         tabs.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
@@ -54,8 +54,10 @@ pub mod gui_controller {
         let mut main_lib_tab = Group::default()
             .with_label("Full Library")
             .with_size(base_window_width, base_window_height);
+
         main_lib_tab
             .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
+
         //  Add below for closable tabs
         //  col1.set_trigger(CallbackTrigger::Closed);
         //  col1.set_callback(tab_close_cb);
@@ -76,7 +78,7 @@ pub mod gui_controller {
         let library_list_width = 500;
         let library_list_height = 300;
 
-        let library_list_pos_x = 0;
+        let library_list_pos_x = 5;
         let library_list_pos_y = 0;
 
         let mut library_list = Scroll::default()
@@ -87,6 +89,7 @@ pub mod gui_controller {
             );
 
         //library_list.set_type(fltk::group::ScrollType::Vertical);
+
         library_list.set_frame(FrameType::GtkDownFrame);
         library_list
             .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);

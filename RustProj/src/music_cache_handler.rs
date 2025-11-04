@@ -1,11 +1,10 @@
 pub mod music_file_handler {
-    // Use statements
-    use std::fs::File;
+    use std::cmp::Ordering;
     use std::fs::{self, OpenOptions};
+    use std::fs::{File, write};
     use std::time::SystemTime;
 
     use crate::{get_jedmp_musiccache_path, music_play_queue_handler};
-    use glob::*;
     use rodio::Decoder;
     use std::io::{BufRead, BufReader, Write};
     use std::path::PathBuf;
@@ -25,18 +24,28 @@ pub mod music_file_handler {
             .open(cached_songs_path)
             .expect("Couldn't open music_cache");
 
-        // Glob to recursively scan. read_dir only does top level.
         println!("----\t[Master] Starting processing benchmark\t----");
         let startNanoTime = SystemTime::now();
 
-        let search_pattern = format!("{:?}/*", dir_path.replace("\"", "")).replace("\"", "");
-        println!("[Master] Search Pattern: {}", search_pattern);
-        let paths_in_master = glob(&search_pattern).expect("Something went wrong with glob search");
         let mut pathb = PathBuf::new();
+        pathb.push(dir_path);
+
+        let mut music_cache: Vec<String> = Vec::new();
+        let paths_in_master = pathb
+            .read_dir()
+            .expect("Couldn't unwrap chosen directory {dir_path}");
 
         for path in paths_in_master {
             pathb.clear();
-            let pathstr = path.unwrap().display().to_string();
+
+            let pathstr = path
+                .unwrap()
+                .path()
+                .into_os_string()
+                .into_string()
+                .unwrap()
+                .to_owned();
+
             pathb.push(&pathstr);
             // get the first sub dir
             // read sub dir, while pathb.is_dir is true, keep going until find non directory
@@ -47,13 +56,30 @@ pub mod music_file_handler {
                     pathstr
                 );
 
-                scan_directory_to_cached_songs(&pathstr, &mut music_cache_file);
+                scan_directory_to_cached_songs(&pathstr, &mut music_cache);
             } else if pathb.is_file() {
                 //println!("[Master Dir] Writing {:?}", pathstr);
                 // Check it's one of our supported song types
-                write_song_to_cache(pathstr, &mut music_cache_file);
+                process_song_to_vec(pathstr, &mut music_cache);
             }
         }
+        // This is likely to take a while
+        // FIXME:
+        // Shit doesn't work properly
+
+        println!("Sort doesn't work properly");
+        music_cache.sort_by(compare_name_alphanumeric_ignore_same_album);
+        // This as well.
+
+        let s = music_cache.concat();
+        let sb = s.into_bytes();
+        music_cache_file
+            .write(&sb[..])
+            .expect("Could't write into music cache");
+
+        music_cache_file
+            .flush()
+            .expect("Byte's couldt reach music_cache");
 
         let elapsedTime = SystemTime::now()
             .duration_since(startNanoTime)
@@ -63,7 +89,7 @@ pub mod music_file_handler {
         println!("----\t[Debug] Benchmark for Music Directories Processing. Time:\t{elapsedTime}");
     }
 
-    fn write_song_to_cache(pathstr: String, music_cache_file: &mut File) {
+    fn process_song_to_vec(pathstr: String, music_cache_vec: &mut Vec<String>) {
         let extension = pathstr.split(".").last().unwrap_or("").to_owned();
         //println!("(Found extension) {:?}", extension);
 
@@ -91,26 +117,39 @@ pub mod music_file_handler {
             if title == "" {
                 title = pathstr.split("/").last().unwrap().to_owned();
             }
-            writeln!(
-                music_cache_file,
-                "{pathstr}\x00{title}\x00{album}\x00{artist}"
-            )
-            .expect("Write failed.");
+            let s = format!("{pathstr}\x00{title}\x00{album}\x00{artist}\n");
+            music_cache_vec.push(s);
         }
     }
+    fn compare_name_alphanumeric_ignore_same_album(a: &String, b: &String) -> Ordering {
+        let av: Vec<&str> = a.split("\x00").collect();
+        let bv: Vec<&str> = b.split("\x00").collect();
 
-    fn scan_directory_to_cached_songs(dir_path: &str, music_cache_file: &mut File) {
+        let album_same = av[2].cmp(bv[2]);
+        let same_album = album_same == Ordering::Equal;
+        println!(
+            "-------------------------------------------------\n
+            song a: {:?}\t song b: {:?}\nA album: {:?}\tB album: {:?}\nSame Album? {same_album}
+            \n-------------------------------------------------",
+            av[1], bv[1], av[2], bv[2]
+        );
+        if album_same == Ordering::Equal {
+            return album_same;
+        } else {
+            return av[1].cmp(bv[1]);
+        }
+    }
+    fn scan_directory_to_cached_songs(dir_path: &str, music_cache: &mut Vec<String>) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
         let mut pathBuf = PathBuf::new();
         for path in pathsindir {
             let song_path = path.unwrap().path().display().to_string();
-
             pathBuf.push(&song_path);
 
             if pathBuf.is_dir() {
-                scan_directory_to_cached_songs(&song_path, music_cache_file);
+                scan_directory_to_cached_songs(&song_path, music_cache);
             } else {
-                write_song_to_cache(song_path, music_cache_file);
+                process_song_to_vec(song_path, music_cache);
             }
         }
     }
