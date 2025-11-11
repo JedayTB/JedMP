@@ -122,9 +122,10 @@ pub mod play_queue_handler {
 
         let play_queue_length = pq.len() as i32;
 
-        let i = adjust_after_index;
+        let mut i = adjust_after_index;
         while i < play_queue_length {
             pq[i as usize].index_in_play_queue += 1;
+            i += 1;
         }
     }
 

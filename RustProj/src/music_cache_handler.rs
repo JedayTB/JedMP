@@ -1,7 +1,6 @@
 pub mod music_file_handler {
-    use std::cmp::Ordering;
+    use std::fs::File;
     use std::fs::{self, OpenOptions};
-    use std::fs::{File, write};
     use std::time::SystemTime;
 
     use crate::{get_jedmp_musiccache_path, music_play_queue_handler};
@@ -63,13 +62,9 @@ pub mod music_file_handler {
                 process_song_to_vec(pathstr, &mut music_cache);
             }
         }
-        // This is likely to take a while
-        // FIXME:
-        // Shit doesn't work properly
 
-        println!("Sort doesn't work properly");
-        music_cache.sort_by(compare_name_alphanumeric_ignore_same_album);
-        // This as well.
+        //println!("Sort doesn't work properly");
+        //music_cache.sort_by(compare_name_alphanumeric_ignore_same_album);
 
         let s = music_cache.concat();
         let sb = s.into_bytes();
@@ -121,6 +116,8 @@ pub mod music_file_handler {
             music_cache_vec.push(s);
         }
     }
+
+    /*
     fn compare_name_alphanumeric_ignore_same_album(a: &String, b: &String) -> Ordering {
         let av: Vec<&str> = a.split("\x00").collect();
         let bv: Vec<&str> = b.split("\x00").collect();
@@ -139,6 +136,7 @@ pub mod music_file_handler {
             return av[1].cmp(bv[1]);
         }
     }
+    */
     fn scan_directory_to_cached_songs(dir_path: &str, music_cache: &mut Vec<String>) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
         let mut pathBuf = PathBuf::new();

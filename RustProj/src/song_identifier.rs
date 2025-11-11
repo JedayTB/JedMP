@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    colors_handler::color_handler::{COLOR_DICTIONARY, JedMP_Colors},
+    colors_handler::color_handler::{JedMP_Colors, get_jedmp_color},
     play_queue_song::PlayQueueSong,
     popup_window,
 };
@@ -47,14 +47,21 @@ impl SongIdentifier {
         _song_name_text.super_handle_first(false);
         _song_name_text.set_buffer(txt_buffer);
         _song_name_text.set_align(alignment);
-        //_song_name_text.set_frame(enums::FrameType::NoBox);
-        _song_name_text
-            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Song_iden_bg_color as usize]);
-        _song_name_text.set_text_color(
-            COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Song_text_color as usize],
-        );
+        _song_name_text.set_frame(enums::FrameType::FlatBox);
+
+        _song_name_text.set_color(get_jedmp_color(JedMP_Colors::Song_iden_bg_color));
+        // Set song text colour based on which type (library or playqueu)
+        match iden_type {
+            SongIdentifierType::LIBRARY => {
+                _song_name_text
+                    .set_text_color(get_jedmp_color(JedMP_Colors::Libary_Song_text_color));
+            }
+            SongIdentifierType::PLAYQUEUE => {
+                _song_name_text
+                    .set_text_color(get_jedmp_color(JedMP_Colors::Playqueue_Song_text_color));
+            }
+        }
         group.set_align(alignment);
-        //group.set_frame(enums::FrameType::NoBox);
 
         let song_clone = song_link.clone();
         group.super_handle_first(false);

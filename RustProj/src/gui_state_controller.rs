@@ -2,6 +2,7 @@ pub mod gui_controller {
     use crate::JButton::JButton::J_Button;
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
+    use crate::colors_handler::color_handler::get_jedmp_color;
     use crate::music_cache_handler::music_file_handler;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE, PLAY_QUEUE_INDEX, decrement_play_queue_index, increment_play_queue_index,
@@ -22,8 +23,15 @@ pub mod gui_controller {
     // Embrace the shit code. Another Global
     static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
 
-    static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 40;
+    static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 30;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
+
+    static BASE_WINDOW_WIDTH: i32 = 896;
+    static BASE_WINDOW_HEIGHT: i32 = 504;
+
+    //TODO:
+    //Create custom frame rendering for Tabs using Tabs bg color.
+    //In fact, likely use this all over the place.
 
     pub fn open_window() {
         // GUI Stuff
@@ -34,59 +42,76 @@ pub mod gui_controller {
         let widgetscheme = WidgetScheme::new(SchemeType::Aqua);
         widgetscheme.apply();
 
-        let base_window_width = 896;
-        let base_window_height = 504;
-
         let general_y_pad = 10;
+        let general_x_pad = 10;
 
         let mut wind = Window::default()
-            .with_size(base_window_width, base_window_height)
+            .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT)
             .with_label("JedMP");
         wind.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
-        let row = Flex::default()
-            .with_size(base_window_width, base_window_height)
-            .row();
-
-        let mut tabs = Tabs::default();
-        tabs.handle_overflow(TabsOverflow::Compress);
-        tabs.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
-
-        let mut main_lib_tab = Group::default()
-            .with_label("Full Library")
-            .with_size(base_window_width, base_window_height);
-
-        main_lib_tab
-            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
 
         //  Add below for closable tabs
         //  col1.set_trigger(CallbackTrigger::Closed);
         //  col1.set_callback(tab_close_cb);
 
-        let top_bar_height = 25;
-
-        // Top Bar
-        let top_bar_group = Flex::default()
-            .with_size(base_window_width, top_bar_height)
-            .with_pos(0, 0);
+        let menu_button_width = 30;
+        let menu_button_height = 10;
 
         let mut add_music_directory_button = J_Button::new()
-            .with_size(base_window_width / 12, top_bar_height)
-            .with_label("Choose Music directory");
+            .with_size(menu_button_width, menu_button_height)
+            .with_label("MusDir")
+            .with_pos(0, 0);
 
-        top_bar_group.end();
+        let menu_artistview_pad = menu_button_width + 31;
+        let button_box_height = BASE_WINDOW_HEIGHT / 12;
+        let button_box_width = BASE_WINDOW_WIDTH;
+        let button_box_pos_y = wind.h();
+        let button_box_pos_x = BASE_WINDOW_WIDTH / 2;
 
+        let button_box = Flex::default()
+            .with_size(button_box_width - menu_artistview_pad, button_box_height)
+            .with_pos(
+                (button_box_pos_x - button_box_width / 2) + menu_artistview_pad,
+                button_box_pos_y - button_box_height - 5,
+            )
+            .row();
+
+        let mut last_song_button = J_Button::new().with_label("<");
+        let mut pause_song_button = J_Button::new().with_label("Pause");
+        let mut next_song_button = J_Button::new().with_label(">");
+
+        button_box.end();
+
+        //===================================================================================
+        //              Put everything wanted inside main tab under here
+        //===================================================================================
+
+        let mut row = Flex::default()
+            .with_size(
+                BASE_WINDOW_WIDTH - menu_button_width,
+                BASE_WINDOW_HEIGHT - button_box_height - 10,
+            )
+            .row()
+            .with_pos(menu_artistview_pad, 0);
+        row.set_color(get_jedmp_color(JedMP_Colors::Tabs_bg_color));
+
+        let mut tabs = Tabs::default();
+        tabs.handle_overflow(TabsOverflow::Compress);
+        tabs.set_color(get_jedmp_color(JedMP_Colors::Background_color));
+
+        let mut main_lib_tab = Group::default()
+            .with_label("Full Library")
+            .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
+        main_lib_tab.set_color(get_jedmp_color(JedMP_Colors::Background_color));
         let library_list_width = 500;
         let library_list_height = 300;
 
-        let library_list_pos_x = 5;
+        let library_list_pos_x = general_x_pad;
         let library_list_pos_y = 0;
 
         let mut library_list = Scroll::default()
             .with_size(library_list_width, library_list_height)
-            .with_pos(
-                library_list_pos_x,
-                library_list_pos_y + general_y_pad + top_bar_height,
-            );
+            .with_pos(library_list_pos_x, library_list_pos_y + general_y_pad);
 
         //library_list.set_type(fltk::group::ScrollType::Vertical);
 
@@ -96,43 +121,36 @@ pub mod gui_controller {
         library_list.end();
         let shared_library_list = rc::Rc::new(RefCell::new(library_list.clone()));
 
-        let button_box_height = base_window_height / 8;
-        let button_box_width = base_window_width;
-        let button_box_pos_y = wind.h();
-        let button_box_pos_x = base_window_width / 2;
-
-        let button_box = Flex::default()
-            .with_size(button_box_width, button_box_height)
-            .with_pos(
-                button_box_pos_x - button_box_width / 2,
-                button_box_pos_y - button_box_height,
-            )
-            .row();
-
-        let mut last_song_button = J_Button::new().with_label("<");
-        let mut pause_song_button = J_Button::new().with_label("Pause");
-        let mut next_song_button = J_Button::new().with_label(">");
-
-        button_box.end();
-        let x_pad_from_lib = 25;
-        let play_queue_box_width = 350;
+        let play_queue_box_width = 250;
         let play_queue_box_height = 300;
 
         let mut play_queue_box = Scroll::default()
             .with_size(play_queue_box_width, play_queue_box_height)
-            .right_of(&library_list, x_pad_from_lib);
+            .with_pos(
+                (BASE_WINDOW_WIDTH - menu_artistview_pad) - play_queue_box_width,
+                library_list_pos_y + general_y_pad,
+            );
 
-        play_queue_box.set_type(fltk::group::ScrollType::Vertical);
-        play_queue_box.set_frame(FrameType::PlasticDownBox);
+        //play_queue_box.set_type(fltk::group::ScrollType::Vertical);
+        //play_queue_box.set_frame(FrameType::PlasticDownBox);
 
-        play_queue_box
-            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
+        play_queue_box.set_color(get_jedmp_color(JedMP_Colors::Background_color));
         play_queue_box.end();
 
         // GUI state variables creation
 
         make_library_list_frames(&mut library_list);
         make_queue_list_frames(&mut play_queue_box);
+
+        main_lib_tab.end();
+        tabs.end();
+        tabs.auto_layout();
+
+        row.end();
+
+        wind.end();
+        wind.make_resizable(true);
+        wind.show();
 
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let s = Sink::try_new(&stream_handle).unwrap();
@@ -215,16 +233,18 @@ pub mod gui_controller {
                 },
             }
         });
+
+        /*
+        wind.handle(|win, e: Event| match e {
+            Event::Push => true,
+
+            Event::Drag => true,
+
+            Event::Released => true,
+            _ => true,
+        });
+        */
         //main_lib_tab.end();
-
-        tabs.end();
-        tabs.auto_layout();
-
-        row.end();
-
-        wind.end();
-        wind.make_resizable(true);
-        wind.show();
 
         app.run().unwrap();
     }
@@ -257,7 +277,7 @@ pub mod gui_controller {
         // yes this is jank as fuck. No I don't care.
         SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
 
-        let mut pack = Pack::default().with_size(play_queue_box.width(), play_queue_box.height()); //_fill();
+        let mut pack = Pack::default().with_size(500, 400); //_fill();
         pack.make_resizable(true);
         play_queue_box.add(&pack);
 
@@ -276,10 +296,11 @@ pub mod gui_controller {
             i += 1;
         }
         pack.end();
-
-        play_queue_box.scroll_to(-527, -40);
+        play_queue_box.auto_layout();
+        play_queue_box.scroll_to(-637, -40);
         SHARED_PLAY_QUEUE_GUI.write().unwrap().push(pack);
     }
+    /*
     fn tab_close_cb(g: &mut impl GroupExt) {
         if app::callback_reason() == CallbackReason::Closed {
             let mut parent = g.parent().unwrap();
@@ -287,6 +308,7 @@ pub mod gui_controller {
             app::redraw();
         }
     }
+    */
     pub fn append_song_to_queue(pq_song: PlayQueueSong) {
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,

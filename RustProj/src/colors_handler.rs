@@ -9,19 +9,26 @@ pub mod color_handler {
     use std::sync::OnceLock;
 
     pub static COLOR_DICTIONARY: OnceLock<Vec<Color>> = OnceLock::new();
-    #[derive(Eq, PartialEq)]
+
+    #[derive(Eq, PartialEq, Debug)]
     pub enum JedMP_Colors {
-        Background_color = 0,
-        Text_color = 1,
-        Important_text_color = 2,
-        Song_text_color = 3,
-        Song_iden_bg_color = 4,
-        Song_hover_color = 5,
-        Button_bg_color = 6,
-        Button_hover_color = 7,
-        Scroll_bar_color = 8,
+        Background_color,
+        Text_color,
+        Important_text_color,
+        Libary_Song_text_color,
+        Playqueue_Song_text_color,
+        Song_iden_bg_color,
+        Song_hover_color,
+        Button_bg_color,
+        Button_Text_color,
+        Button_hover_color,
+        Scroll_bar_color,
+        Tabs_bg_color,
     }
 
+    pub fn get_jedmp_color(Color: JedMP_Colors) -> Color {
+        return COLOR_DICTIONARY.get().unwrap()[Color as usize];
+    }
     pub fn try_load_mastercolorrc() {
         let color_rc_file_path = get_jedmp_master_color_file_path();
         let pathb = PathBuf::from(&color_rc_file_path);
@@ -63,6 +70,7 @@ pub mod color_handler {
             //println!("{strl}");
             let color_as_hex =
                 u32::from_str_radix(&strl, 16).expect("Couldn't parse from hex string");
+
             let col = Color::from_hex(color_as_hex);
 
             colors.push(col);
@@ -72,17 +80,39 @@ pub mod color_handler {
             .set(colors)
             .expect("Couldn't set COLOR_DICTIONARY");
     }
-
+    /*
+    #f7768e #f7768e 	This keyword, HTML elements, Regex group symbol, CSS units, Terminal Red
+    #ff9e64 #ff9e64 	Number and Boolean constants, Language support constants
+    #e0af68 #e0af68 	Function parameters, Regex character sets, Terminal Yellow
+    #cfc9c2 #cfc9c2 	Parameters inside functions (semantic highlighting only)
+    #9ece6a #9ece6a 	Strings, CSS class names
+    #73daca #73daca 	Object literal keys, Markdown links, Terminal Green
+    #b4f9f8 #b4f9f8 	Regex literal strings
+    #2ac3de #2ac3de 	Language support functions, CSS HTML elements
+    #7dcfff #7dcfff 	Object properties, Regex quantifiers and flags, Markdown headings, Terminal Cyan, Markdown code, Import/export keywords
+    #7aa2f7 #7aa2f7 	Function names, CSS property names, Terminal Blue
+    #bb9af7 #bb9af7 	Control Keywords, Storage Types, Regex symbols and operators, HTML Attributes, Terminal Magenta
+    #c0caf5 #c0caf5 	Variables, Class names, Terminal White
+    #a9b1d6 #a9b1d6 	Editor Foreground
+    #9aa5ce #9aa5ce 	Markdown Text, HTML Text
+    #565f89 #565f89 	Comments
+    #414868 #414868 	Terminal Black
+    #24283b #24283b 	Editor Background (Storm)
+    #1a1b26 #1a1b26 	Editor Background (Night)
+    */
     fn write_colorrc_defaults(colorrc_file: &mut File) {
-        let colorrc_default_fields = "Background color:#0D001A
-Text_color:#6CB9C9
-Important_text_color:#9ED198
-song_text_color:#B0D199
-Song_iden_bg_color:#2E0A30
+        let colorrc_default_fields = "Background color:#1A1B26
+Text_color:#CFC9C2
+Important_text_color:#F7768E
+library_song_text_color:#B0D199
+playqueue_song_text_color:#E0AF68
+Song_iden_bg_color:#24283B
 Song_Hover_color:#4F1446
-Button_BG_color:#2E0A30
+Button_BG_color:#565F89
+Button_Text_color:#FF9E64
 Button_hover_color:#4F1446
-Scroll_bar_color:#6E5181";
+Scroll_bar_color:#565F89
+Tabs_bg_color:#414868";
 
         write!(colorrc_file, "{}", colorrc_default_fields)
             .expect("[Colors Handler] Could not write to colorrc");
