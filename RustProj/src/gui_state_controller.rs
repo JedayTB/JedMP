@@ -3,11 +3,13 @@ pub mod gui_controller {
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
+    use crate::get_jedmp_playlist_dir;
     use crate::music_cache_handler::music_file_handler;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE, PLAY_QUEUE_INDEX, decrement_play_queue_index, increment_play_queue_index,
     };
     use crate::play_queue_song::PlayQueueSong;
+    use crate::playlist_handler::playlist_handler::get_playlists_names;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
@@ -26,8 +28,11 @@ pub mod gui_controller {
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 30;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
-    static BASE_WINDOW_WIDTH: i32 = 896;
-    static BASE_WINDOW_HEIGHT: i32 = 504;
+    pub static BASE_WINDOW_WIDTH: i32 = 896;
+    pub static BASE_WINDOW_HEIGHT: i32 = 504;
+    pub static GENERAL_X_PAD: i32 = 10;
+    pub static GENERAL_Y_PAD: i32 = 10;
+    pub static MENU_ARTISTVIEW_PAD: i32 = 61;
 
     //TODO:
     //Create custom frame rendering for Tabs using Tabs bg color.
@@ -42,9 +47,6 @@ pub mod gui_controller {
         let widgetscheme = WidgetScheme::new(SchemeType::Aqua);
         widgetscheme.apply();
 
-        let general_y_pad = 10;
-        let general_x_pad = 10;
-
         let mut wind = Window::default()
             .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT)
             .with_label("JedMP");
@@ -57,11 +59,10 @@ pub mod gui_controller {
         let menu_button_width = 30;
         let menu_button_height = 10;
 
-        let mut add_music_directory_button = J_Button::new()
+        let mut menu_button = J_Button::new()
             .with_size(menu_button_width, menu_button_height)
-            .with_label("MusDir")
+            .with_label("Menu")
             .with_pos(0, 0);
-
         let menu_artistview_pad = menu_button_width + 31;
         let button_box_height = BASE_WINDOW_HEIGHT / 12;
         let button_box_width = BASE_WINDOW_WIDTH;
@@ -82,10 +83,6 @@ pub mod gui_controller {
 
         button_box.end();
 
-        //===================================================================================
-        //              Put everything wanted inside main tab under here
-        //===================================================================================
-
         let mut row = Flex::default()
             .with_size(
                 BASE_WINDOW_WIDTH - menu_button_width,
@@ -94,10 +91,14 @@ pub mod gui_controller {
             .row()
             .with_pos(menu_artistview_pad, 0);
         row.set_color(get_jedmp_color(JedMP_Colors::Tabs_bg_color));
-
         let mut tabs = Tabs::default();
         tabs.handle_overflow(TabsOverflow::Compress);
         tabs.set_color(get_jedmp_color(JedMP_Colors::Background_color));
+
+        let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
+        //===================================================================================
+        //              Put everything wanted inside main tab under here
+        //===================================================================================
 
         let mut main_lib_tab = Group::default()
             .with_label("Full Library")
@@ -106,12 +107,12 @@ pub mod gui_controller {
         let library_list_width = 500;
         let library_list_height = 300;
 
-        let library_list_pos_x = general_x_pad;
+        let library_list_pos_x = GENERAL_X_PAD;
         let library_list_pos_y = 0;
 
         let mut library_list = Scroll::default()
             .with_size(library_list_width, library_list_height)
-            .with_pos(library_list_pos_x, library_list_pos_y + general_y_pad);
+            .with_pos(library_list_pos_x, library_list_pos_y + GENERAL_Y_PAD);
 
         //library_list.set_type(fltk::group::ScrollType::Vertical);
 
@@ -128,7 +129,7 @@ pub mod gui_controller {
             .with_size(play_queue_box_width, play_queue_box_height)
             .with_pos(
                 (BASE_WINDOW_WIDTH - menu_artistview_pad) - play_queue_box_width,
-                library_list_pos_y + general_y_pad,
+                library_list_pos_y + GENERAL_Y_PAD,
             );
 
         //play_queue_box.set_type(fltk::group::ScrollType::Vertical);
@@ -152,6 +153,9 @@ pub mod gui_controller {
         wind.make_resizable(true);
         wind.show();
 
+        //
+        //  Create callbacks
+        //
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let s = Sink::try_new(&stream_handle).unwrap();
         SHARED_SINK.write().unwrap().push(s);
@@ -205,33 +209,84 @@ pub mod gui_controller {
             }
         });
 
-        add_music_directory_button.set_callback(move |_| {
-            let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
-            nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
-            match nfc.try_show() {
-                Err(e) => {
-                    eprintln!("{}", e);
-                    //None
+        // Quick and dirty custom choices
+        menu_button.set_callback(move |mbut| {
+            let mut cwind = Window::default()
+                .with_pos(
+                    mbut.x() + mbut.w() + mbut.label_size(),
+                    mbut.y() + mbut.h() * 2,
+                )
+                .with_size(150, 100);
+
+            cwind.set_border(false);
+            let flex = Flex::default_fill().column();
+            let mut add_mus_dir_but = J_Button::new().with_label("Add Music Directory");
+
+            add_mus_dir_but.set_callback(|_| {
+                let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
+                nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
+                match nfc.try_show() {
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        //None
+                    }
+
+                    Ok(a) => match a {
+                        dialog::NativeFileChooserAction::Success => {
+                            println!("Valid Directory Chosen, processing for music..");
+                            let directory = nfc.filename();
+                            let strname = directory
+                                .to_str()
+                                .expect("Directory doesn't have a string name?..");
+
+                            music_file_handler::process_chosen_song_directory(strname);
+                            music_file_handler::load_cached_songs();
+
+                            //FIXME:
+                            //Borrow checker bs
+                            //make_library_list_frames(&mut *shared_library_list.borrow_mut());
+                        }
+                        dialog::NativeFileChooserAction::Cancelled => {
+                            println!("Directory Pick cancelled");
+                        }
+                    },
                 }
+            });
 
-                Ok(a) => match a {
-                    dialog::NativeFileChooserAction::Success => {
-                        println!("Valid Directory Chosen, processing for music..");
-                        let directory = nfc.filename();
-                        let strname = directory
-                            .to_str()
-                            .expect("Directory doesn't have a string name?..");
+            let mut add_playlist_tab = J_Button::new().with_label("Open Playlist");
+            add_playlist_tab.set_callback(|_| {
+                let mut wind = Window::default().with_size(500, 250);
+                wind.set_border(false);
+                wind.set_color(Color::from_rgb(100, 100, 100));
 
-                        music_file_handler::process_chosen_song_directory(strname);
-                        music_file_handler::load_cached_songs();
+                let playlists = get_playlists_names();
+                let mut playlist_picker: Scroll = Scroll::default().with_size(500, 200);
 
-                        make_library_list_frames(&mut *shared_library_list.borrow_mut());
-                    }
-                    dialog::NativeFileChooserAction::Cancelled => {
-                        println!("Directory Pick cancelled");
-                    }
-                },
-            }
+                let mut pl_pack = Pack::default_fill();
+                pl_pack.make_resizable(true);
+                playlist_picker.add(&pl_pack);
+
+                for playlist_name in playlists {
+                    let mut temp_b = J_Button::new()
+                        .with_label(&playlist_name)
+                        .with_size(450, 30);
+                    //let tsp = song.to_owned();
+                    temp_b.set_callback(move |_| {
+                        let jedmpPLDir = get_jedmp_playlist_dir();
+                        let plPath = format!("{jedmpPLDir}/{playlist_name}");
+                    });
+                    pl_pack.add(&*temp_b);
+                }
+                pl_pack.end();
+
+                playlist_picker.end();
+                wind.show();
+                wind.end();
+            });
+
+            flex.end();
+            cwind.end();
+            cwind.show();
         });
 
         /*
@@ -244,12 +299,11 @@ pub mod gui_controller {
             _ => true,
         });
         */
-        //main_lib_tab.end();
 
         app.run().unwrap();
     }
 
-    fn make_library_list_frames(library_list_box: &mut Scroll) {
+    pub fn make_library_list_frames(library_list_box: &mut Scroll) {
         library_list_box.clear();
 
         let mut pack =
@@ -273,7 +327,7 @@ pub mod gui_controller {
         app::redraw();
     }
 
-    fn make_queue_list_frames(play_queue_box: &mut Scroll) {
+    pub fn make_queue_list_frames(play_queue_box: &mut Scroll) {
         // yes this is jank as fuck. No I don't care.
         SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
 

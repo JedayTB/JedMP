@@ -30,7 +30,7 @@ pub mod playlist_window {
 
             for pls in playlists {
                 let mut temp_b = J_Button::new().with_label(&pls).with_size(450, 30);
-                let tsp = song.song_path.to_owned();
+                let tsp = song.to_owned();
                 temp_b.set_callback(move |_| {
                     add_song_to_playlst(&pls, tsp.to_owned());
                 });

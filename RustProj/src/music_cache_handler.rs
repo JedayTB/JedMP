@@ -3,6 +3,7 @@ pub mod music_file_handler {
     use std::fs::{self, OpenOptions};
     use std::time::SystemTime;
 
+    use crate::play_queue_song::PlayQueueSong;
     use crate::{get_jedmp_musiccache_path, music_play_queue_handler};
     use rodio::Decoder;
     use std::io::{BufRead, BufReader, Write};
@@ -63,18 +64,15 @@ pub mod music_file_handler {
             }
         }
 
-        //println!("Sort doesn't work properly");
-        //music_cache.sort_by(compare_name_alphanumeric_ignore_same_album);
-
         let s = music_cache.concat();
         let sb = s.into_bytes();
         music_cache_file
             .write(&sb[..])
-            .expect("Could't write into music cache");
+            .expect("Could't write into music_cache");
 
         music_cache_file
             .flush()
-            .expect("Byte's couldt reach music_cache");
+            .expect("Byte's couldn't reach music_cache");
 
         let elapsedTime = SystemTime::now()
             .duration_since(startNanoTime)
@@ -116,27 +114,14 @@ pub mod music_file_handler {
             music_cache_vec.push(s);
         }
     }
-
-    /*
-    fn compare_name_alphanumeric_ignore_same_album(a: &String, b: &String) -> Ordering {
-        let av: Vec<&str> = a.split("\x00").collect();
-        let bv: Vec<&str> = b.split("\x00").collect();
-
-        let album_same = av[2].cmp(bv[2]);
-        let same_album = album_same == Ordering::Equal;
-        println!(
-            "-------------------------------------------------\n
-            song a: {:?}\t song b: {:?}\nA album: {:?}\tB album: {:?}\nSame Album? {same_album}
-            \n-------------------------------------------------",
-            av[1], bv[1], av[2], bv[2]
-        );
-        if album_same == Ordering::Equal {
-            return album_same;
-        } else {
-            return av[1].cmp(bv[1]);
-        }
+    pub fn process_existing_song_to_string(song: PlayQueueSong) -> String {
+        let path = song.song_path;
+        let title = song.song_title;
+        let album = song._song_album;
+        let artist = song._song_artists;
+        format!("{path}\x00{title}\x00{album}\x00{artist}\n")
     }
-    */
+
     fn scan_directory_to_cached_songs(dir_path: &str, music_cache: &mut Vec<String>) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
         let mut pathBuf = PathBuf::new();
@@ -187,4 +172,24 @@ pub mod music_file_handler {
 
         music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
     }
+    /*
+    fn compare_name_alphanumeric_ignore_same_album(a: &String, b: &String) -> Ordering {
+        let av: Vec<&str> = a.split("\x00").collect();
+        let bv: Vec<&str> = b.split("\x00").collect();
+
+        let album_same = av[2].cmp(bv[2]);
+        let same_album = album_same == Ordering::Equal;
+        println!(
+            "-------------------------------------------------\n
+            song a: {:?}\t song b: {:?}\nA album: {:?}\tB album: {:?}\nSame Album? {same_album}
+            \n-------------------------------------------------",
+            av[1], bv[1], av[2], bv[2]
+        );
+        if album_same == Ordering::Equal {
+            return album_same;
+        } else {
+            return av[1].cmp(bv[1]);
+        }
+    }
+    */
 }

@@ -6,7 +6,11 @@ pub mod playlist_handler {
         path::PathBuf,
     };
 
-    use crate::get_jedmp_playlist_dir;
+    use crate::{
+        get_jedmp_playlist_dir,
+        music_cache_handler::music_file_handler::process_existing_song_to_string,
+        play_queue_song::PlayQueueSong,
+    };
     pub struct Playlist {}
 
     pub fn try_create_playlist_dir() {
@@ -39,7 +43,7 @@ pub mod playlist_handler {
         File::create(pl_path).expect("Couldn't create playlist");
     }
 
-    pub fn add_song_to_playlst(playlist_name: &String, song: String) {
+    pub fn add_song_to_playlst(playlist_name: &String, song: PlayQueueSong) {
         let pdir = get_jedmp_playlist_dir();
         let sel_pl_path = format!("{pdir}/{playlist_name}");
         let mut mf = OpenOptions::new()
@@ -47,12 +51,13 @@ pub mod playlist_handler {
             .open(sel_pl_path)
             .expect("Couldn't open playlist");
 
-        let writestr = process_song_to_string(song);
-
-        write!(mf, "{}", writestr).expect("Failed to write to file");
+        write!(mf, "{}", process_existing_song_to_string(song)).expect("Failed to write to file");
     }
 
-    pub fn add_multiple_songs_to_playlist(playlist_name: &String, pq_songs_to_add: Vec<String>) {
+    pub fn add_multiple_songs_to_playlist(
+        playlist_name: &String,
+        pq_songs_to_add: Vec<PlayQueueSong>,
+    ) {
         let pdir = get_jedmp_playlist_dir();
         let sel_pl_path = format!("{pdir}/{playlist_name}");
         let mut mf = OpenOptions::new()
@@ -64,62 +69,11 @@ pub mod playlist_handler {
 
         write!(mf, "{}", writestr).expect("Failed to write to file");
     }
-    fn process_multiple_songs_to_string(songs: Vec<String>) -> String {
+    fn process_multiple_songs_to_string(songs: Vec<PlayQueueSong>) -> String {
         let mut ret_string: String = "".to_owned();
         for s in songs {
-            let tF = taglib::File::new(&s).expect("Couldn't open song file as taglib file");
-
-            let album = tF
-                .tag()
-                .unwrap()
-                .album()
-                .unwrap_or("".to_owned())
-                .to_owned();
-            let artist = tF
-                .tag()
-                .unwrap()
-                .artist()
-                .unwrap_or("".to_owned())
-                .to_owned();
-            let mut title: String = tF
-                .tag()
-                .unwrap()
-                .title()
-                .unwrap_or("".to_owned())
-                .to_owned();
-
-            if title == "" {
-                title = s.split("/").last().unwrap().to_owned();
-            }
-            ret_string.push_str(&format!("{s}\x00{title}\x00{album}\x00{artist}\n"));
+            ret_string.push_str(&process_existing_song_to_string(s));
         }
         return ret_string;
-    }
-    fn process_song_to_string(pathstr: String) -> String {
-        let tF = taglib::File::new(&pathstr).expect("Coudln't open song file as taglib file");
-
-        let album = tF
-            .tag()
-            .unwrap()
-            .album()
-            .unwrap_or("".to_owned())
-            .to_owned();
-        let artist = tF
-            .tag()
-            .unwrap()
-            .artist()
-            .unwrap_or("".to_owned())
-            .to_owned();
-        let mut title: String = tF
-            .tag()
-            .unwrap()
-            .title()
-            .unwrap_or("".to_owned())
-            .to_owned();
-        if title == "" {
-            title = pathstr.split("/").last().unwrap().to_owned();
-        }
-        let s = format!("{pathstr}\x00{title}\x00{album}\x00{artist}\n");
-        return s;
     }
 }

@@ -2,14 +2,10 @@ pub mod play_queue_handler {
     use crate::play_queue_song::PlayQueueSong;
 
     use std::fs::File;
-    use std::thread::JoinHandle;
-    use std::time::SystemTime;
-    use std::{io::BufReader, io::Lines, sync::Arc, sync::RwLock, thread};
+    use std::{io::BufReader, io::Lines, sync::RwLock};
 
     pub static PLAY_QUEUE: RwLock<Vec<PlayQueueSong>> = RwLock::new(Vec::new());
     pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
-
-    const MINIMUM_SIZE_TO_MULTITHREAD: usize = 500;
 
     pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>) {
         // Clear queue first
@@ -21,92 +17,36 @@ pub mod play_queue_handler {
 
         let cfl_vec: Vec<String> = cached_file_lines.collect::<Result<_, _>>().unwrap();
         println!("----\t[Debug] Playqueue Vec creation benchmarking\t----");
-        let startTime = SystemTime::now();
-        let cfl_vec_len = cfl_vec.len();
 
         //let threads_to_spawn = cfl_vec_len;
 
         // No need to multithread relatively small Play queues
 
         //  Single thread version
-        if cfl_vec_len < MINIMUM_SIZE_TO_MULTITHREAD {
-            let mut i: i32 = 0;
+        let mut i: i32 = 0;
 
-            let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
-            // Read necessary information
+        let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
+        // Read necessary information
 
-            for line in cfl_vec {
-                let entry = line;
+        for line in cfl_vec {
+            let entry = line;
 
-                let entries: Vec<&str> = entry.split("\x00").collect();
+            let entries: Vec<&str> = entry.split("\x00").collect();
 
-                let plq_song = PlayQueueSong::new(
-                    entries[0].to_owned(),
-                    entries[1].to_owned(),
-                    entries[2].to_owned(),
-                    entries[3].to_owned(),
-                    i as usize,
-                );
-
-                i += 1;
-                tempPQ.push(plq_song);
-            }
-            PLAY_QUEUE.write().unwrap().clone_from(&tempPQ);
-            let elapsed = SystemTime::now()
-                .duration_since(startTime)
-                .unwrap()
-                .as_millis();
-            println!("----\t[Debug] Playqueue vec created with main core: Time:    {elapsed}");
-        } else {
-            // Multithreading!
-
-            // Setup
-            let arc_cfl: Arc<Vec<String>> = Arc::from(cfl_vec);
-            let arc_cfl2: Arc<Vec<String>> = arc_cfl.clone();
-            let half_size = cfl_vec_len / 2;
-
-            let t1j = pqTFunc(arc_cfl, 0usize, half_size);
-            let t2j = pqTFunc(arc_cfl2, half_size, cfl_vec_len);
-
-            t1j.join().expect("Couldn't rejoin to main thread");
-            t2j.join().expect("Coudln't rejoin to main thread");
-
-            let elapsed = SystemTime::now()
-                .duration_since(startTime)
-                .unwrap()
-                .as_millis();
-            println!(
-                "----\t[Debug] Playqeueu created with 2 threads\n\t\tTime Taken:\t{elapsed}\n\t\tSongs processed:\t{cfl_vec_len}"
+            let plq_song = PlayQueueSong::new(
+                entries[0].to_owned(),
+                entries[1].to_owned(),
+                entries[2].to_owned(),
+                entries[3].to_owned(),
+                i as usize,
             );
+
+            i += 1;
+            tempPQ.push(plq_song);
         }
+        PLAY_QUEUE.write().unwrap().clone_from(&tempPQ);
     }
     // Probably going to be temporary
-    fn pqTFunc(aPQ: Arc<Vec<String>>, start_ind: usize, end_ind: usize) -> JoinHandle<()> {
-        let joinHandle: JoinHandle<_> = thread::spawn(move || {
-            let mut i: usize = start_ind;
-            let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
-            let cfl = aPQ.clone();
-            while i < end_ind {
-                let entry = cfl[i].clone();
-
-                let entries: Vec<&str> = entry.split("\x00").collect();
-
-                let plq_song = PlayQueueSong::new(
-                    entries[0].to_owned(),
-                    entries[1].to_owned(),
-                    entries[2].to_owned(),
-                    entries[3].to_owned(),
-                    i as usize,
-                );
-
-                i += 1;
-                tempPQ.push(plq_song);
-            }
-
-            PLAY_QUEUE.write().unwrap().append(&mut tempPQ);
-        });
-        return joinHandle;
-    }
 
     // perhaps not best to take in a copy of the struct.
     // But im not sure if the PLAY_QUEUE variable would be satisfied with a reference

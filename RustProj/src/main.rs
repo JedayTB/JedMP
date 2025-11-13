@@ -2,6 +2,7 @@
 #![allow(non_snake_case)]
 
 pub mod JButton;
+pub mod Playlist_Tab;
 pub mod colors_handler;
 pub mod gui_state_controller;
 pub mod music_cache_handler;
