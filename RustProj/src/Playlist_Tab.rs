@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 pub mod Playlist_Tab {
 
+    use std::fs::File;
+    use std::io::BufRead;
+    use std::io::BufReader;
+
     use fltk::group::{Group, Scroll};
 
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
@@ -10,6 +14,7 @@ pub mod Playlist_Tab {
         BASE_WINDOW_HEIGHT, BASE_WINDOW_WIDTH, GENERAL_X_PAD, GENERAL_Y_PAD, MENU_ARTISTVIEW_PAD,
         make_library_list_frames, make_queue_list_frames,
     };
+    use crate::music_play_queue_handler::play_queue_handler;
 
     use fltk::{enums::FrameType, prelude::*, *};
 
@@ -18,13 +23,26 @@ pub mod Playlist_Tab {
         library: Scroll,
         play_queue: Scroll,
         path_to_playlist: String,
+        playlist_index: usize,
     }
 
     widget_extends!(PlaylistTab, group::Group, tab_group);
     impl PlaylistTab {
-        pub fn new(path_to_playlist: String) -> Self {
+        pub fn new(path_to_playlist: String, playlist_name: String, pl_index: usize) -> Self {
+            let playlist_file =
+                File::open(&path_to_playlist).expect("Couldn't read cached_songs file.");
+
+            let bufR = BufReader::new(playlist_file);
+            let lines = bufR.lines();
+
+            play_queue_handler::create_playqueue(lines, pl_index);
+            //FIXME:
+            //Note: At the time of writing, this will likely cause desync issues between tabs.
+            //Read message at the top of play_queue_handler.rs for more information
+            //play_queue_handler::create_playqueue(lines);
+
             let mut tab_group = Group::default()
-                .with_label("Full Library")
+                .with_label(&playlist_name)
                 .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
             tab_group.set_color(get_jedmp_color(JedMP_Colors::Background_color));
             let library_list_width = 500;
@@ -63,14 +81,16 @@ pub mod Playlist_Tab {
             play_queue.end();
 
             // GUI state variables creation
-            make_library_list_frames(&mut library);
-            make_queue_list_frames(&mut play_queue);
+            make_library_list_frames(&mut library, pl_index);
+            make_queue_list_frames(&mut play_queue, pl_index);
 
+            let playlist_index = pl_index;
             Self {
                 tab_group,
                 library,
                 play_queue,
                 path_to_playlist,
+                playlist_index,
             }
         }
     }

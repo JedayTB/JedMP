@@ -37,6 +37,7 @@ impl SongIdentifier {
         iden_type: SongIdentifierType,
         song_link: PlayQueueSong,
         index_in_list: Option<usize>,
+        pq_belongs_to: usize,
     ) -> SongIdentifier {
         let mut group = Flex::default().with_size(w, h);
 
@@ -75,6 +76,7 @@ impl SongIdentifier {
                         &iden_type,
                         song_clone.clone(),
                         index_in_list,
+                        pq_belongs_to,
                     )
                     .with_pos(mx, my);
                 }

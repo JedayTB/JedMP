@@ -26,6 +26,7 @@ pub mod popup_window {
             pwin_type: &SongIdentifierType,
             song: PlayQueueSong,
             _index: Option<usize>,
+            pq_belongs_to: usize,
         ) -> Self {
             let mut win = window::Window::default();
 
@@ -57,10 +58,14 @@ pub mod popup_window {
                     add_queue_but.set_callback(move |_| {
                         println!("Appended to pq");
 
-                        play_queue_handler::append_to_playqueue(song_.borrow().clone());
+                        play_queue_handler::append_to_playqueue(
+                            song_.borrow().clone(),
+                            pq_belongs_to,
+                        );
 
                         gui_state_controller::gui_controller::append_song_to_queue(
                             song_.borrow().clone(),
+                            pq_belongs_to,
                         );
                     });
                     insert_next_but.set_callback(move |_| {
@@ -69,10 +74,12 @@ pub mod popup_window {
                         play_queue_handler::insert_song_into_playqueue(
                             song__.borrow().clone(),
                             *current_index,
+                            pq_belongs_to,
                         );
                         gui_state_controller::gui_controller::insert_song_to_queue(
                             song__.borrow().clone(),
                             current_index.clone(),
+                            pq_belongs_to,
                         );
                     });
                     add_to_playlist.set_callback(move |_| {
@@ -107,6 +114,7 @@ pub mod popup_window {
                     remove_this_but.set_callback(move |_| {
                         play_queue_handler::remove_song_at_index(
                             song_.borrow().clone().index_in_play_queue,
+                            pq_belongs_to,
                         );
                         gui_state_controller::gui_controller::remove_song_from_playqueue(
                             song_.borrow().clone().index_in_play_queue,

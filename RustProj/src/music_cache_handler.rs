@@ -169,27 +169,7 @@ pub mod music_file_handler {
 
         let buf_reader = BufReader::new(cached_music_file);
         let string_it = buf_reader.lines();
-
-        music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
+        // Only ever creates Full Libary tab playqueue
+        music_play_queue_handler::play_queue_handler::create_playqueue(string_it, 0);
     }
-    /*
-    fn compare_name_alphanumeric_ignore_same_album(a: &String, b: &String) -> Ordering {
-        let av: Vec<&str> = a.split("\x00").collect();
-        let bv: Vec<&str> = b.split("\x00").collect();
-
-        let album_same = av[2].cmp(bv[2]);
-        let same_album = album_same == Ordering::Equal;
-        println!(
-            "-------------------------------------------------\n
-            song a: {:?}\t song b: {:?}\nA album: {:?}\tB album: {:?}\nSame Album? {same_album}
-            \n-------------------------------------------------",
-            av[1], bv[1], av[2], bv[2]
-        );
-        if album_same == Ordering::Equal {
-            return album_same;
-        } else {
-            return av[1].cmp(bv[1]);
-        }
-    }
-    */
 }

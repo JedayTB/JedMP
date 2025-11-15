@@ -4,12 +4,19 @@ pub mod play_queue_handler {
     use std::fs::File;
     use std::{io::BufReader, io::Lines, sync::RwLock};
 
-    pub static PLAY_QUEUE: RwLock<Vec<PlayQueueSong>> = RwLock::new(Vec::new());
+    //TODO:
+    // Will likely have to do major refactoring. Currently Library list variables are based on playqueu
+    // Which makes many things a headache when adding multiple tabs / playlists
+    // Do i reset playqueue everytime I load a new tab? Reset everytime tabs switch?
+    // Better to make a separate vec for Libary and Playqueue.
+    // (Store library vec inside corresponding Tab (playlist))
+
+    pub static PLAY_QUEUES: RwLock<Vec<Vec<PlayQueueSong>>> = RwLock::new(Vec::new());
     pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
 
-    pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>) {
+    pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>, playqueues_index: usize) {
         // Clear queue first
-        PLAY_QUEUE.write().unwrap().clear();
+        PLAY_QUEUES.write().unwrap().clear();
 
         // Reset play queue index
         let mut pqi = PLAY_QUEUE_INDEX.write().unwrap();
@@ -18,11 +25,6 @@ pub mod play_queue_handler {
         let cfl_vec: Vec<String> = cached_file_lines.collect::<Result<_, _>>().unwrap();
         println!("----\t[Debug] Playqueue Vec creation benchmarking\t----");
 
-        //let threads_to_spawn = cfl_vec_len;
-
-        // No need to multithread relatively small Play queues
-
-        //  Single thread version
         let mut i: i32 = 0;
 
         let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
@@ -44,7 +46,7 @@ pub mod play_queue_handler {
             i += 1;
             tempPQ.push(plq_song);
         }
-        PLAY_QUEUE.write().unwrap().clone_from(&tempPQ);
+        PLAY_QUEUES.write().unwrap().push(tempPQ);
     }
     // Probably going to be temporary
 
@@ -57,8 +59,8 @@ pub mod play_queue_handler {
     // Must adjust the songs within the play_queue to match their index
     // This must be done for each song after an insert and removal.
 
-    fn adjust_playqueue(adjust_after_index: i32) {
-        let mut pq = PLAY_QUEUE.write().unwrap();
+    fn adjust_playqueue(adjust_after_index: i32, which_pq_to_adjust: usize) {
+        let pq = &mut PLAY_QUEUES.write().unwrap()[which_pq_to_adjust];
 
         let play_queue_length = pq.len() as i32;
 
@@ -69,20 +71,24 @@ pub mod play_queue_handler {
         }
     }
 
-    pub fn insert_song_into_playqueue(pq_song: PlayQueueSong, index: usize) {
-        PLAY_QUEUE.write().unwrap().insert(index, pq_song);
+    pub fn insert_song_into_playqueue(
+        pq_song: PlayQueueSong,
+        index: usize,
+        which_pq_adjust: usize,
+    ) {
+        PLAY_QUEUES.write().unwrap()[which_pq_adjust].insert(index, pq_song);
 
-        adjust_playqueue(index as i32);
+        adjust_playqueue(index as i32, which_pq_adjust);
     }
-    pub fn append_to_playqueue(pq_song: PlayQueueSong) {
-        PLAY_QUEUE.write().unwrap().push(pq_song);
+    pub fn append_to_playqueue(pq_song: PlayQueueSong, which_pq_adjust: usize) {
+        PLAY_QUEUES.write().unwrap()[which_pq_adjust].push(pq_song);
     }
-    pub fn remove_from_playqueue(index: usize) {
-        PLAY_QUEUE.write().unwrap().remove(index);
+    pub fn remove_from_playqueue(index: usize, which_pq_adjust: usize) {
+        PLAY_QUEUES.write().unwrap()[which_pq_adjust].remove(index);
     }
-    pub fn increment_play_queue_index() -> Option<usize> {
+    pub fn increment_play_queue_index(which_pq_adjust: usize) -> Option<usize> {
         let mut pqi = PLAY_QUEUE_INDEX.write().unwrap();
-        let pq_len = PLAY_QUEUE.read().unwrap().len();
+        let pq_len = PLAY_QUEUES.read().unwrap()[which_pq_adjust].len();
         let inc_ind = pqi.checked_add(1).unwrap_or_default();
 
         if inc_ind > pq_len {
@@ -106,7 +112,7 @@ pub mod play_queue_handler {
         *pqi = new_pq_index;
     }
 
-    pub fn remove_song_at_index(rm_ind: usize) {
-        PLAY_QUEUE.write().unwrap().remove(rm_ind);
+    pub fn remove_song_at_index(rm_ind: usize, which_pq_adjust: usize) {
+        PLAY_QUEUES.write().unwrap()[which_pq_adjust].remove(rm_ind);
     }
 }
