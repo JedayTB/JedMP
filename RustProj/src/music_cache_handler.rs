@@ -149,9 +149,9 @@ pub mod music_file_handler {
         {
             println!("Jed MP Folder does not exist. Creating and populating...");
             File::create(&cachedfiles_path_str).unwrap();
-            println!("Created cachedmusic file");
+            println!("[Debug] Created cachedmusic file");
         } else {
-            println!("Cached Music Found, Loading library...");
+            println!("[Debug] Cached Music Found, Loading library...");
             load_cached_songs();
         }
     }
@@ -170,6 +170,6 @@ pub mod music_file_handler {
         let buf_reader = BufReader::new(cached_music_file);
         let string_it = buf_reader.lines();
         // Only ever creates Full Libary tab playqueue
-        music_play_queue_handler::play_queue_handler::create_playqueue(string_it, 0);
+        music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
     }
 }

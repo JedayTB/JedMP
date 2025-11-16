@@ -21,14 +21,17 @@ pub mod gui_controller {
     use std::cell::RefCell;
     use std::rc;
     use std::sync::RwLock;
-    // Shit way of making a global
+
+    // Shit way of making a global (Because can't do runtime functions for Pack)
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
     // Embrace the shit code. Another Global
     static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
 
+    // These globals arent too bad.
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
     static PLAYLIST_COUNT: RwLock<usize> = RwLock::new(0);
     static RELOAD_SINK: RwLock<bool> = RwLock::new(true);
+
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 30;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
@@ -56,6 +59,10 @@ pub mod gui_controller {
             .with_label("JedMP");
         wind.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
 
+        //FIXME:
+        //Do something to make this user cofigurable
+        let font = Font::load_font("/home/jeday/.fonts/JetBrainsMono-Medium.ttf").unwrap();
+        Font::set_font(Font::Helvetica, &font);
         //  Add below for closable tabs
         //  col1.set_trigger(CallbackTrigger::Closed);
         //  col1.set_callback(tab_close_cb);
@@ -111,11 +118,10 @@ pub mod gui_controller {
         tabs.handle(|tb, e: Event| match e {
             Event::Push => {
                 let tabs_children = tb.children();
-                println!("Tabs has {tabs_children} children");
                 let clicked_playlist = tb.push();
                 let sel_pl: Widget;
                 if clicked_playlist.is_none() {
-                    println!("No playlist pushed down on");
+                    //println!("No playlist pushed down on");
                 } else {
                     sel_pl = clicked_playlist.unwrap().as_base_widget();
                     let mut i = 0;
@@ -125,7 +131,7 @@ pub mod gui_controller {
                         let p = c.label();
                         println!("{p}");
                         if sel_pl.is_same(&c) {
-                            println!("clicked playlist was {p}, idx is {i}");
+                            //println!("clicked playlist was {p}, idx is {i}");
                             *RELOAD_SINK.write().unwrap() = true;
                             break;
                         }
@@ -273,13 +279,16 @@ pub mod gui_controller {
                     mbut.y() + mbut.h() * 2,
                 )
                 .with_size(150, 100);
-
+            let rcwin = rc::Rc::new(RefCell::new(cwind.clone()));
             cwind.set_border(false);
             let flex = Flex::default_fill().column();
             let mut add_mus_dir_but = J_Button::new().with_label("Add Music Directory");
 
             let sh_lib_inner = sh_lib_list.clone();
+
+            let adm_rcwin = rcwin.clone();
             add_mus_dir_but.set_callback(move |_| {
+                adm_rcwin.borrow_mut().hide();
                 let sh_inner_inner = sh_lib_inner.clone();
                 let mut nfc = dialog::NativeFileChooser::new(dialog::FileDialogType::BrowseDir);
                 nfc.set_option(dialog::NativeFileChooserOptions::SaveAsConfirm);
@@ -313,8 +322,11 @@ pub mod gui_controller {
 
             let sh_tab_inner = sh_tab.clone();
 
+            let apt_rc_win = rcwin.clone();
             add_playlist_tab.set_callback(move |_| {
+                apt_rc_win.borrow_mut().hide();
                 let mut wind = Window::default().with_size(500, 250);
+                let r_wind = rc::Rc::new(RefCell::new(wind.clone()));
                 wind.set_border(false);
                 wind.set_color(Color::from_rgb(100, 100, 100));
 
@@ -330,8 +342,9 @@ pub mod gui_controller {
                     let mut temp_b = J_Button::new()
                         .with_label(&playlist_name)
                         .with_size(450, 30);
-                    //let tsp = song.to_owned();
+
                     let sht = sh_tab_inner_inner.clone();
+                    let rw = r_wind.clone();
                     temp_b.set_callback(move |_| {
                         let pl_name = playlist_name.clone();
                         let sh_tab_for = sht.clone();
@@ -340,13 +353,14 @@ pub mod gui_controller {
                         let tab = &mut *sh_tab_for.borrow_mut();
 
                         *PLAYLIST_COUNT.write().unwrap() += 1;
-                        let c = *PLAYLIST_COUNT.read().unwrap();
-                        let mut newPlTab = PlaylistTab::new(plPath, pl_name, c);
+                        let pl_idx = *PLAYLIST_COUNT.read().unwrap();
+                        let mut newPlTab = PlaylistTab::new(plPath, pl_name, pl_idx);
                         newPlTab.set_trigger(CallbackTrigger::Closed);
                         newPlTab.set_callback(tab_close_cb);
                         tab.add(&*newPlTab);
                         tab.auto_layout();
-                        // add to shared_tabs somehow. Borrow checker gonna be a bitch
+
+                        rw.borrow_mut().hide();
                     });
                     pl_pack.add(&*temp_b);
                 }

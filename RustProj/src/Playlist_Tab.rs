@@ -35,7 +35,7 @@ pub mod Playlist_Tab {
             let bufR = BufReader::new(playlist_file);
             let lines = bufR.lines();
 
-            play_queue_handler::create_playqueue(lines, pl_index);
+            play_queue_handler::create_playqueue(lines);
 
             let mut tab_group = Group::default()
                 .with_label(&playlist_name)

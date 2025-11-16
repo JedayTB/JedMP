@@ -4,22 +4,14 @@ pub mod play_queue_handler {
     use std::fs::File;
     use std::{io::BufReader, io::Lines, sync::RwLock};
 
-    //TODO:
-    // Will likely have to do major refactoring. Currently Library list variables are based on playqueu
-    // Which makes many things a headache when adding multiple tabs / playlists
-    // Do i reset playqueue everytime I load a new tab? Reset everytime tabs switch?
-    // Better to make a separate vec for Libary and Playqueue.
-    // (Store library vec inside corresponding Tab (playlist))
-
     pub static PLAY_QUEUES: RwLock<Vec<Vec<PlayQueueSong>>> = RwLock::new(Vec::new());
     pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
 
-    pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>, playqueues_index: usize) {
+    pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>) {
         let mut pqi = PLAY_QUEUE_INDEX.write().unwrap();
         *pqi = 0;
 
         let cfl_vec: Vec<String> = cached_file_lines.collect::<Result<_, _>>().unwrap();
-        println!("----\t[Debug] Playqueue Vec creation benchmarking\t----");
 
         let mut i: i32 = 0;
 
@@ -41,8 +33,6 @@ pub mod play_queue_handler {
 
             i += 1;
             tempPQ.push(plq_song);
-            let len = tempPQ.len();
-            println!("Tpq len {len}");
         }
         PLAY_QUEUES.write().unwrap().push(tempPQ.clone());
     }
@@ -53,7 +43,6 @@ pub mod play_queue_handler {
     // design speaking as well, it's probably best the contents of PLAY_QUEUE aren't references
     // as well.
 
-    // NOTE::
     // Must adjust the songs within the play_queue to match their index
     // This must be done for each song after an insert and removal.
 

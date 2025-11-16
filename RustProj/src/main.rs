@@ -19,10 +19,6 @@ use std::process::abort;
 
 use crate::gui_state_controller::gui_controller;
 
-//TODO:
-//Rewrite jedmpdir handling from music_cache_handler
-//to here and let music_cache_handler / colors_handler
-//Handle the creation of their indiviual files.
 fn main() {
     // Mostly for debugging purposes
     handle_cmd_args();

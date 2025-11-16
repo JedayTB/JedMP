@@ -1,24 +1,16 @@
 ﻿# JedMP
 I couldn't find a music player I liked on linux. So,I decided to make an open source music player written using Rust!
 
-This is mostly a learning project for me (Jeday) to learn rust. But making a good music player is also cool
-
 ## TODO
-Most recent TODO update - 2025-07-018 4:56 pm EST
+Most recent TODO update - 2025-11-16 02:20 EST
 
 RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only handle by symphonia)
 
 TODO List:
 
-- SWITCH MUSIC PLAYER LIBRARY TO VLC.
-- Music library view, scrollable 
-  - Shuffle functions into queue
-  - Full Music library 
-  - Artist separated library
-    - Album separated by artist library
+- Artist view that sorts Music Library for each Playlist
 - Current playing song 
-- Better UI.
-- Configurable UI colors (GUI Placements if ambitious)
+- Better UI. (Probable Custom drawn elements)
 
 ## Starting development
 
@@ -35,15 +27,11 @@ To Download rust do: \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-There are multiple dependencies, but, this project uses cargo to handle them. For each dependency listed, do\
-This may be unecessary as, the cargo.toml in the repo has these included.
 
-```
-cargo install {dependency_name}
-```
-### Dependencies 
+### Rust Crates Dependencies 
 
 Rodio - Music playing\
 FLTK-RS - GUI\
+taglib - Reading Music file metadata\
 whoami - Getting information about user's system.\
 libtags - Getting tag info from audio files
