@@ -15,10 +15,6 @@ pub mod play_queue_handler {
     pub static PLAY_QUEUE_INDEX: RwLock<usize> = RwLock::new(0usize);
 
     pub fn create_playqueue(cached_file_lines: Lines<BufReader<File>>, playqueues_index: usize) {
-        // Clear queue first
-        PLAY_QUEUES.write().unwrap().clear();
-
-        // Reset play queue index
         let mut pqi = PLAY_QUEUE_INDEX.write().unwrap();
         *pqi = 0;
 
@@ -45,8 +41,10 @@ pub mod play_queue_handler {
 
             i += 1;
             tempPQ.push(plq_song);
+            let len = tempPQ.len();
+            println!("Tpq len {len}");
         }
-        PLAY_QUEUES.write().unwrap().push(tempPQ);
+        PLAY_QUEUES.write().unwrap().push(tempPQ.clone());
     }
     // Probably going to be temporary
 

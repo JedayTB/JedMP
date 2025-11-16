@@ -13,6 +13,7 @@ pub mod gui_controller {
     use crate::playlist_handler::playlist_handler::get_playlists_names;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
+    use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
     use fltk_theme::{SchemeType, WidgetScheme};
@@ -27,7 +28,7 @@ pub mod gui_controller {
 
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
     static PLAYLIST_COUNT: RwLock<usize> = RwLock::new(0);
-
+    static RELOAD_SINK: RwLock<bool> = RwLock::new(true);
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 30;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
@@ -97,11 +98,48 @@ pub mod gui_controller {
         let mut tabs = Tabs::default();
         tabs.handle_overflow(TabsOverflow::Compress);
         tabs.set_color(get_jedmp_color(JedMP_Colors::Background_color));
-        tabs.set_callback(|t| {
-            let current_playlist_index = t.push().expect("No tab was pushed?");
-            //let t = current_playlist_index.get_type;
-            //println!("{t}");
+
+        //FIXME:
+        //This will error later, when user closes a tab. IE
+        // tab1  tab2 tab3
+        // * closes tab 2 *
+        // tab1 tab3
+        // this logic will asign idx = 1 (element 2) when it finds tab3.
+        // Possible fixes is removing tab2's playlists from PLAY_QUEUES and adjustinng indexes
+        // accordingly. The other option is a custom tab implementation That returns PlaylistTab
+        // instead of {impl GroupExt}
+        tabs.handle(|tb, e: Event| match e {
+            Event::Push => {
+                let tabs_children = tb.children();
+                println!("Tabs has {tabs_children} children");
+                let clicked_playlist = tb.push();
+                let sel_pl: Widget;
+                if clicked_playlist.is_none() {
+                    println!("No playlist pushed down on");
+                } else {
+                    sel_pl = clicked_playlist.unwrap().as_base_widget();
+                    let mut i = 0;
+
+                    while i < tabs_children {
+                        let c = tb.child(i).expect("No widgets?");
+                        let p = c.label();
+                        println!("{p}");
+                        if sel_pl.is_same(&c) {
+                            println!("clicked playlist was {p}, idx is {i}");
+                            *RELOAD_SINK.write().unwrap() = true;
+                            break;
+                        }
+
+                        i += 1;
+                    }
+
+                    *CURRENT_PLAYLIST_INDEX.write().unwrap() = i as usize;
+                }
+                true
+            }
+            _ => true,
         });
+
         let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
 
         //===================================================================================
@@ -160,11 +198,11 @@ pub mod gui_controller {
         wind.end();
         wind.make_resizable(true);
         wind.show();
-        // Increment because 0th (1st) has been made
-        *PLAYLIST_COUNT.write().unwrap() += 1;
+
         //
         //  Create callbacks
         //
+
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let s = Sink::try_new(&stream_handle).unwrap();
         SHARED_SINK.write().unwrap().push(s);
@@ -201,9 +239,11 @@ pub mod gui_controller {
         });
 
         pause_song_button.set_callback(move |btn| {
-            if SHARED_SINK.read().unwrap()[0].empty() {
+            if SHARED_SINK.read().unwrap()[0].empty() || *RELOAD_SINK.read().unwrap() == true {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
                 let cur_pl = CURRENT_PLAYLIST_INDEX.read().unwrap();
+                let idx = *cur_pl;
+                println!("Load song from {idx} playlist");
                 let path = PLAY_QUEUES.read().unwrap()[*cur_pl][*ind].clone();
                 let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
@@ -211,6 +251,7 @@ pub mod gui_controller {
                 SHARED_SINK.write().unwrap()[0].stop();
                 SHARED_SINK.write().unwrap()[0].append(source);
                 SHARED_SINK.write().unwrap()[0].play();
+                *RELOAD_SINK.write().unwrap() = false;
             }
 
             if SHARED_SINK.read().unwrap()[0].is_paused() {
@@ -338,7 +379,7 @@ pub mod gui_controller {
     pub fn make_library_list_frames(library_list_box: &mut Scroll, which_pq: usize) {
         library_list_box.clear();
 
-        let pl_ind = CURRENT_PLAYLIST_INDEX.read().unwrap().clone();
+        let pl_ind = which_pq;
         let mut pack =
             Pack::default().with_size(library_list_box.width(), library_list_box.height()); //_fill();
         pack.make_resizable(true);
@@ -365,7 +406,7 @@ pub mod gui_controller {
         // yes this is jank as fuck. No I don't care.
         SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
 
-        let pl_ind = CURRENT_PLAYLIST_INDEX.read().unwrap().clone();
+        let pl_ind = which_pq;
         let mut pack = Pack::default().with_size(500, 400); //_fill();
         pack.make_resizable(true);
         play_queue_box.add(&pack);

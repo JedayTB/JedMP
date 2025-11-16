@@ -36,14 +36,11 @@ pub mod Playlist_Tab {
             let lines = bufR.lines();
 
             play_queue_handler::create_playqueue(lines, pl_index);
-            //FIXME:
-            //Note: At the time of writing, this will likely cause desync issues between tabs.
-            //Read message at the top of play_queue_handler.rs for more information
-            //play_queue_handler::create_playqueue(lines);
 
             let mut tab_group = Group::default()
                 .with_label(&playlist_name)
                 .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
+
             tab_group.set_color(get_jedmp_color(JedMP_Colors::Background_color));
             let library_list_width = 500;
             let library_list_height = 300;
