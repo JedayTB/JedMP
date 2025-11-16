@@ -35,3 +35,9 @@ FLTK-RS - GUI\
 taglib - Reading Music file metadata\
 whoami - Getting information about user's system.\
 libtags - Getting tag info from audio files
+
+### Package Depedencies
+
+```
+linux-vdso && libtag_c && libasound && libX11 && libXinerama && libXcursor && libXfixes && libfontconfig && libpango-1.0 && libgobject-2.0 && libcairo && libpangocairo-1.0 && libgcc_s && libm && libc && libtag && libstdc++ && libxcb && libXext && libXrender && libfreetype && libexpat && libglib-2.0 && libgio-2.0 && libfribidi && libthai && libharfbuzz && libffi && libz && libpng16 && libxcb-render && libxcb-shm && libpixman-1 && libpangoft2-1.0 && libXau && libXdmcp && libbz2 && libbrotlidec && libpcre2-8 && libgmodule-2.0 && libmount && libselinux && libdatrie &&  libgraphite2 && libbsd && libbrotlicommon && libblkid && libmd
+```
