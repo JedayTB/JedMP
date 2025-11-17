@@ -13,12 +13,15 @@ pub mod gui_controller {
     use crate::playlist_handler::playlist_handler::get_playlists_names;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
     use fltk::dialog;
+    use fltk::frame::Frame;
+    use fltk::misc;
     use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
     use fltk_theme::{SchemeType, WidgetScheme};
     use rodio::{OutputStream, Sink};
     use std::cell::RefCell;
+    use std::collections::HashMap;
     use std::rc;
     use std::sync::RwLock;
 
@@ -39,7 +42,7 @@ pub mod gui_controller {
     pub static BASE_WINDOW_HEIGHT: i32 = 504;
     pub static GENERAL_X_PAD: i32 = 10;
     pub static GENERAL_Y_PAD: i32 = 10;
-    pub static MENU_ARTISTVIEW_PAD: i32 = 61;
+    pub static MENU_ARTISTVIEW_PAD: i32 = 100;
 
     //TODO:
     //Create custom frame rendering for Tabs using Tabs bg color.
@@ -63,9 +66,6 @@ pub mod gui_controller {
         //Do something to make this user cofigurable
         let font = Font::load_font("/home/jeday/.fonts/JetBrainsMono-Medium.ttf").unwrap();
         Font::set_font(Font::Helvetica, &font);
-        //  Add below for closable tabs
-        //  col1.set_trigger(CallbackTrigger::Closed);
-        //  col1.set_callback(tab_close_cb);
 
         let menu_button_width = 30;
         let menu_button_height = 10;
@@ -74,16 +74,15 @@ pub mod gui_controller {
             .with_size(menu_button_width, menu_button_height)
             .with_label("Menu")
             .with_pos(0, 0);
-        let menu_artistview_pad = menu_button_width + 31;
         let button_box_height = BASE_WINDOW_HEIGHT / 12;
         let button_box_width = BASE_WINDOW_WIDTH;
         let button_box_pos_y = wind.h();
         let button_box_pos_x = BASE_WINDOW_WIDTH / 2;
 
         let button_box = Flex::default()
-            .with_size(button_box_width - menu_artistview_pad, button_box_height)
+            .with_size(button_box_width - MENU_ARTISTVIEW_PAD, button_box_height)
             .with_pos(
-                (button_box_pos_x - button_box_width / 2) + menu_artistview_pad,
+                (button_box_pos_x - button_box_width / 2) + MENU_ARTISTVIEW_PAD,
                 button_box_pos_y - button_box_height - 5,
             )
             .row();
@@ -94,20 +93,72 @@ pub mod gui_controller {
 
         button_box.end();
 
+        let artist_view_box = Scroll::default()
+            .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
+            .with_pos(0, 15);
+
+        let mut art_pack = Pack::default_fill();
+
+        let artist_frame_width = MENU_ARTISTVIEW_PAD;
+        let artist_frame_height = 50;
+
+        let mut art_hash: HashMap<String, Frame> = HashMap::new();
+        let mut misc_artist_frame = Frame::default()
+            .with_size(artist_frame_width, artist_frame_height)
+            .with_label("Miscellaneous");
+
+        misc_artist_frame.handle(|f, E: Event| match E {
+            Event::Push => {
+                let f_label = f.label();
+                println!("Frame: {f_label} pushed");
+                true
+            }
+
+            _ => true,
+        });
+        art_pack.add(&misc_artist_frame);
+        art_hash.insert("".to_owned(), misc_artist_frame);
+
+        for s in PLAY_QUEUES.read().unwrap()[0].clone() {
+            let artist_name = s._song_artists;
+
+            if art_hash.contains_key(&artist_name) == false {
+                let mut artist_frame = Frame::default()
+                    .with_size(artist_frame_width, artist_frame_height)
+                    .with_label(&artist_name);
+
+                artist_frame.handle(|f, E: Event| match E {
+                    Event::Push => {
+                        let f_label = f.label();
+                        println!("Frame: {f_label} pushed");
+                        true
+                    }
+
+                    _ => true,
+                });
+                art_pack.add(&artist_frame);
+                art_hash.insert(artist_name, artist_frame);
+            }
+        }
+
+        art_pack.end();
+        artist_view_box.end();
+
         let mut row = Flex::default()
             .with_size(
                 BASE_WINDOW_WIDTH - menu_button_width,
                 BASE_WINDOW_HEIGHT - button_box_height - 10,
             )
             .row()
-            .with_pos(menu_artistview_pad, 0);
+            .with_pos(MENU_ARTISTVIEW_PAD, 0);
+
         row.set_color(get_jedmp_color(JedMP_Colors::Tabs_bg_color));
         let mut tabs = Tabs::default();
         tabs.handle_overflow(TabsOverflow::Compress);
         tabs.set_color(get_jedmp_color(JedMP_Colors::Background_color));
 
         //FIXME:
-        //This will error later, when user closes a tab. IE
+        // This will error later, when user closes a tab. IE
         // tab1  tab2 tab3
         // * closes tab 2 *
         // tab1 tab3
@@ -180,7 +231,7 @@ pub mod gui_controller {
         let mut play_queue_box = Scroll::default()
             .with_size(play_queue_box_width, play_queue_box_height)
             .with_pos(
-                (BASE_WINDOW_WIDTH - menu_artistview_pad) - play_queue_box_width,
+                (BASE_WINDOW_WIDTH - MENU_ARTISTVIEW_PAD) - play_queue_box_width,
                 library_list_pos_y + GENERAL_Y_PAD,
             );
 
