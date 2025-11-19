@@ -11,7 +11,6 @@ pub mod playlist_handler {
         music_cache_handler::music_file_handler::process_existing_song_to_string,
         play_queue_song::PlayQueueSong,
     };
-    pub struct Playlist {}
 
     pub fn try_create_playlist_dir() {
         let jedmp_playlist_dir_path = get_jedmp_playlist_dir();

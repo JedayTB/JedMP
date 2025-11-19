@@ -1,9 +1,12 @@
 pub mod gui_controller {
     use crate::JButton::JButton::J_Button;
+    use crate::Playlist_Tab;
     use crate::Playlist_Tab::Playlist_Tab::PlaylistTab;
+    use crate::artist_frame::artist_frame::ArtistFrame;
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
+    use crate::get_jedmp_musiccache_path;
     use crate::get_jedmp_playlist_dir;
     use crate::music_cache_handler::music_file_handler;
     use crate::music_play_queue_handler::play_queue_handler::{
@@ -12,9 +15,8 @@ pub mod gui_controller {
     use crate::play_queue_song::PlayQueueSong;
     use crate::playlist_handler::playlist_handler::get_playlists_names;
     use crate::song_identifier::{SongIdentifier, SongIdentifierType};
+    use crate::tab_library::Tab_Library::TabLibrary;
     use fltk::dialog;
-    use fltk::frame::Frame;
-    use fltk::misc;
     use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
@@ -93,57 +95,6 @@ pub mod gui_controller {
 
         button_box.end();
 
-        let artist_view_box = Scroll::default()
-            .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
-            .with_pos(0, 15);
-
-        let mut art_pack = Pack::default_fill();
-
-        let artist_frame_width = MENU_ARTISTVIEW_PAD;
-        let artist_frame_height = 50;
-
-        let mut art_hash: HashMap<String, Frame> = HashMap::new();
-        let mut misc_artist_frame = Frame::default()
-            .with_size(artist_frame_width, artist_frame_height)
-            .with_label("Miscellaneous");
-
-        misc_artist_frame.handle(|f, E: Event| match E {
-            Event::Push => {
-                let f_label = f.label();
-                println!("Frame: {f_label} pushed");
-                true
-            }
-
-            _ => true,
-        });
-        art_pack.add(&misc_artist_frame);
-        art_hash.insert("".to_owned(), misc_artist_frame);
-
-        for s in PLAY_QUEUES.read().unwrap()[0].clone() {
-            let artist_name = s._song_artists;
-
-            if art_hash.contains_key(&artist_name) == false {
-                let mut artist_frame = Frame::default()
-                    .with_size(artist_frame_width, artist_frame_height)
-                    .with_label(&artist_name);
-
-                artist_frame.handle(|f, E: Event| match E {
-                    Event::Push => {
-                        let f_label = f.label();
-                        println!("Frame: {f_label} pushed");
-                        true
-                    }
-
-                    _ => true,
-                });
-                art_pack.add(&artist_frame);
-                art_hash.insert(artist_name, artist_frame);
-            }
-        }
-
-        art_pack.end();
-        artist_view_box.end();
-
         let mut row = Flex::default()
             .with_size(
                 BASE_WINDOW_WIDTH - menu_button_width,
@@ -199,59 +150,49 @@ pub mod gui_controller {
 
         let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
 
-        //===================================================================================
-        //              Put everything wanted inside main tab under here
-        //===================================================================================
+        let main_tab = PlaylistTab::new(get_jedmp_musiccache_path(), "All".to_owned(), 0);
+        let mtab_lib = rc::Rc::new(RefCell::new(main_tab.library));
 
-        let mut main_lib_tab = Group::default()
-            .with_label("Full Library")
-            .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
-        main_lib_tab.set_color(get_jedmp_color(JedMP_Colors::Background_color));
-        let library_list_width = 500;
-        let library_list_height = 300;
-
-        let library_list_pos_x = GENERAL_X_PAD;
-        let library_list_pos_y = 0;
-
-        let mut library_list = Scroll::default()
-            .with_size(library_list_width, library_list_height)
-            .with_pos(library_list_pos_x, library_list_pos_y + GENERAL_Y_PAD);
-
-        //library_list.set_type(fltk::group::ScrollType::Vertical);
-
-        library_list.set_frame(FrameType::GtkDownFrame);
-        library_list
-            .set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize]);
-        library_list.end();
-        let shared_library_list = rc::Rc::new(RefCell::new(library_list.clone()));
-
-        let play_queue_box_width = 250;
-        let play_queue_box_height = 300;
-
-        let mut play_queue_box = Scroll::default()
-            .with_size(play_queue_box_width, play_queue_box_height)
-            .with_pos(
-                (BASE_WINDOW_WIDTH - MENU_ARTISTVIEW_PAD) - play_queue_box_width,
-                library_list_pos_y + GENERAL_Y_PAD,
-            );
-
-        //play_queue_box.set_type(fltk::group::ScrollType::Vertical);
-        //play_queue_box.set_frame(FrameType::PlasticDownBox);
-
-        play_queue_box.set_color(get_jedmp_color(JedMP_Colors::Background_color));
-        play_queue_box.end();
-
-        // GUI state variables creation
-
-        make_library_list_frames(&mut library_list, 0);
-        make_queue_list_frames(&mut play_queue_box, 0);
-
-        main_lib_tab.end();
         tabs.end();
         tabs.auto_layout();
 
         row.end();
 
+        let artist_view_box = Scroll::default()
+            .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
+            .with_pos(0, 15);
+
+        let mut art_pack = Pack::default_fill();
+
+        let artist_frame_width = MENU_ARTISTVIEW_PAD;
+        let artist_frame_height = 50;
+
+        let mut art_hash: HashMap<String, ArtistFrame> = HashMap::new();
+
+        let misc_artist_frame =
+            ArtistFrame::new("Miscellaneous".to_owned(), 0 as usize, mtab_lib.clone())
+                .with_size(artist_frame_width, artist_frame_height)
+                .with_label("Miscellaneous");
+
+        art_pack.add(&*misc_artist_frame);
+        art_hash.insert("".to_owned(), misc_artist_frame);
+
+        for s in PLAY_QUEUES.read().unwrap()[0].clone() {
+            let artist_name = s._song_artists;
+
+            if art_hash.contains_key(&artist_name) == false {
+                let artist_frame =
+                    ArtistFrame::new(artist_name.clone(), 0 as usize, mtab_lib.clone())
+                        .with_size(artist_frame_width, artist_frame_height)
+                        .with_label(&artist_name);
+
+                art_pack.add(&*artist_frame);
+                art_hash.insert(artist_name, artist_frame);
+            }
+        }
+
+        art_pack.end();
+        artist_view_box.end();
         wind.end();
         wind.make_resizable(true);
         wind.show();
@@ -321,7 +262,9 @@ pub mod gui_controller {
         });
 
         // Quick and dirty custom choices
-        let sh_lib_list = shared_library_list.clone();
+        // sh_tab_list exists in attempt to populate the Scroll element after picking a music
+        // directory
+        let sh_lib_list = mtab_lib.clone();
         let sh_tab = shared_tabs.clone();
         menu_button.set_callback(move |mbut| {
             let mut cwind = Window::default()
@@ -441,14 +384,12 @@ pub mod gui_controller {
         app.run().unwrap();
     }
 
-    pub fn make_library_list_frames(library_list_box: &mut Scroll, which_pq: usize) {
-        library_list_box.clear();
-
+    pub fn make_library_list_frames(tablib: &mut TabLibrary, which_pq: usize) {
+        tablib.scroll_pack.clear();
+        let w = tablib.lib_scroll.w();
+        let h = tablib.lib_scroll.h();
         let pl_ind = which_pq;
-        let mut pack =
-            Pack::default().with_size(library_list_box.width(), library_list_box.height()); //_fill();
-        pack.make_resizable(true);
-        library_list_box.add(&pack);
+        tablib.scroll_pack.resize(0, 0, w, h);
 
         for song in PLAY_QUEUES.read().unwrap()[pl_ind].iter() {
             let si = SongIdentifier::new(
@@ -461,7 +402,7 @@ pub mod gui_controller {
                 None,
                 which_pq,
             );
-            pack.add(&*si);
+            tablib.scroll_pack.add(&*si);
         }
 
         app::redraw();

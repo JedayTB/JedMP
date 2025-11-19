@@ -15,12 +15,13 @@ pub mod Playlist_Tab {
         make_library_list_frames, make_queue_list_frames,
     };
     use crate::music_play_queue_handler::play_queue_handler;
+    use crate::tab_library::Tab_Library::TabLibrary;
 
     use fltk::{enums::FrameType, prelude::*, *};
 
     pub struct PlaylistTab {
         tab_group: Group,
-        library: Scroll,
+        pub library: TabLibrary,
         play_queue: Scroll,
         path_to_playlist: String,
         playlist_index: usize,
@@ -48,7 +49,7 @@ pub mod Playlist_Tab {
             let library_list_pos_x = GENERAL_X_PAD;
             let library_list_pos_y = 0;
 
-            let mut library = Scroll::default()
+            let mut library = TabLibrary::new(pl_index)
                 .with_size(library_list_width, library_list_height)
                 .with_pos(library_list_pos_x, library_list_pos_y + GENERAL_Y_PAD);
 
@@ -76,7 +77,6 @@ pub mod Playlist_Tab {
 
             play_queue.set_color(get_jedmp_color(JedMP_Colors::Background_color));
             play_queue.end();
-
             // GUI state variables creation
             make_library_list_frames(&mut library, pl_index);
             make_queue_list_frames(&mut play_queue, pl_index);
