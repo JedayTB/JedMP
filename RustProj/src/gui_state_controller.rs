@@ -1,21 +1,22 @@
 pub mod gui_controller {
-    use crate::JButton::JButton::J_Button;
-    use crate::Playlist_Tab;
-    use crate::Playlist_Tab::Playlist_Tab::PlaylistTab;
-    use crate::artist_frame::artist_frame::ArtistFrame;
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
     use crate::get_jedmp_musiccache_path;
     use crate::get_jedmp_playlist_dir;
+    use crate::gui_resources::gui_resources::ArtistFrame;
+    use crate::gui_resources::gui_resources::J_Button;
+
+    use crate::gui_resources::gui_resources::PlaylistTab;
+    use crate::gui_resources::gui_resources::SongIdentifier;
+    use crate::gui_resources::gui_resources::SongIdentifierType;
+    use crate::gui_resources::gui_resources::TabLibrary;
     use crate::music_cache_handler::music_file_handler;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE_INDEX, PLAY_QUEUES, decrement_play_queue_index, increment_play_queue_index,
     };
     use crate::play_queue_song::PlayQueueSong;
     use crate::playlist_handler::playlist_handler::get_playlists_names;
-    use crate::song_identifier::{SongIdentifier, SongIdentifierType};
-    use crate::tab_library::Tab_Library::TabLibrary;
     use fltk::dialog;
     use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};

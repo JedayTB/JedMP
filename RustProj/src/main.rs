@@ -1,20 +1,13 @@
 // Modules
 #![allow(non_snake_case)]
 
-pub mod JButton;
-pub mod Playlist_Tab;
-pub mod artist_frame;
 pub mod colors_handler;
+pub mod gui_resources;
 pub mod gui_state_controller;
 pub mod music_cache_handler;
 pub mod music_play_queue_handler;
 pub mod play_queue_song;
 pub mod playlist_handler;
-pub mod playlist_window;
-pub mod popup_window;
-pub mod song_identifier;
-pub mod tab_library;
-
 use std::env;
 use std::fs;
 use std::path::PathBuf;
