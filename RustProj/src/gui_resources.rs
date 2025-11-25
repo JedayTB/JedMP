@@ -25,38 +25,44 @@ pub mod gui_resources {
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
     use crate::gui_state_controller::gui_controller::{
-        BASE_WINDOW_HEIGHT, BASE_WINDOW_WIDTH, GENERAL_X_PAD, GENERAL_Y_PAD, MENU_ARTISTVIEW_PAD,
-        make_library_list_frames, make_queue_list_frames,
+        BASE_WINDOW_HEIGHT, BASE_WINDOW_WIDTH, GENERAL_X_PAD, GENERAL_Y_PAD,
+        make_artist_view_frames, make_library_list_frames,
     };
-    use crate::music_play_queue_handler::play_queue_handler;
-    use crate::music_play_queue_handler::play_queue_handler::PLAY_QUEUES;
+    use crate::music_play_queue_handler::play_queue_handler::{self, MUSIC_LIBRARIES};
 
     use fltk::enums::FrameType;
 
     pub struct PlaylistTab {
         tab_group: Group,
         pub library: TabLibrary,
-        play_queue: Scroll,
-        path_to_playlist: String,
-        playlist_index: usize,
     }
 
     widget_extends!(PlaylistTab, group::Group, tab_group);
+    //NOTE:
+    //The make bool param is kinda shit. Done because artistview needs an rc::refcell to the pltab
+    //but it needs to be done after pltab is made. Therefore we get an error if pltab does it
+    //before.. Because it's some shit
     impl PlaylistTab {
-        pub fn new(path_to_playlist: String, playlist_name: String, pl_index: usize) -> Self {
+        pub fn new(
+            path_to_playlist: String,
+            playlist_name: String,
+            pl_index: usize,
+            make_tab: bool,
+        ) -> Self {
             let playlist_file =
                 File::open(&path_to_playlist).expect("Couldn't read cached_songs file.");
 
             let bufR = BufReader::new(playlist_file);
             let lines = bufR.lines();
 
-            play_queue_handler::create_playqueue(lines);
+            play_queue_handler::open_music_lib(lines);
 
             let mut tab_group = Group::default()
                 .with_label(&playlist_name)
                 .with_size(BASE_WINDOW_WIDTH, BASE_WINDOW_HEIGHT);
 
             tab_group.set_color(get_jedmp_color(JedMP_Colors::Background_color));
+
             let library_list_width = 500;
             let library_list_height = 300;
 
@@ -67,42 +73,20 @@ pub mod gui_resources {
                 .with_size(library_list_width, library_list_height)
                 .with_pos(library_list_pos_x, library_list_pos_y + GENERAL_Y_PAD);
 
-            //library_list.set_type(fltk::group::ScrollType::Vertical);
-
             library.set_frame(FrameType::GtkDownFrame);
             library.set_color(
                 COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Background_color as usize],
             );
             library.end();
-            //let shared_library_list = rc::Rc::new(RefCell::new(library_list.clone()));
 
-            let play_queue_box_width = 250;
-            let play_queue_box_height = 300;
-
-            let mut play_queue = Scroll::default()
-                .with_size(play_queue_box_width, play_queue_box_height)
-                .with_pos(
-                    (BASE_WINDOW_WIDTH - MENU_ARTISTVIEW_PAD) - play_queue_box_width,
-                    library_list_pos_y + GENERAL_Y_PAD,
-                );
-
-            //play_queue_box.set_type(fltk::group::ScrollType::Vertical);
-            //play_queue_box.set_frame(FrameType::PlasticDownBox);
-
-            play_queue.set_color(get_jedmp_color(JedMP_Colors::Background_color));
-            play_queue.end();
-            // GUI state variables creation
             make_library_list_frames(&mut library, pl_index);
-            make_queue_list_frames(&mut play_queue, pl_index);
-
-            let playlist_index = pl_index;
-            Self {
-                tab_group,
-                library,
-                play_queue,
-                path_to_playlist,
-                playlist_index,
+            if make_tab == true {
+                let rc_tablib = Rc::new(RefCell::new(library.clone()));
+                make_artist_view_frames(rc_tablib, pl_index);
             }
+
+            //let playlist_index = pl_index;
+            Self { tab_group, library }
         }
     }
 
@@ -111,7 +95,6 @@ pub mod gui_resources {
     //
     pub struct ArtistFrame {
         artist_frame: Frame,
-        tab_belong_idx: usize,
     }
 
     widget_extends!(ArtistFrame, Frame, artist_frame);
@@ -119,57 +102,58 @@ pub mod gui_resources {
     impl ArtistFrame {
         pub fn new(
             artist_frame_name: String,
-            tab_belong_idx: usize,
             library_in_tab_frame_rfc: Rc<RefCell<TabLibrary>>,
         ) -> Self {
             let mut artist_frame = Frame::default();
 
-            artist_frame.handle(move |f, e| match e {
+            artist_frame.handle(move |_f, e| match e {
                 Event::Push => {
-                    let n = f.label();
-                    //println!("[Debug] {n} pushed");
                     let lbf = library_in_tab_frame_rfc.borrow_mut();
                     let lb_pack = &lbf.scroll_pack;
                     let pq_idx = lbf.pq_idx_belongs_to;
                     let mut i = 0;
-                    //FIXME:
-                    // Need library lists instead of play_queues. For now, this'll do
-                    // just don't change the playqueue from default!
 
-                    // Don't process for misc frame
-
-                    //if artist_frame_name != "Miscellaneous".to_owned() {
-                    for s in &PLAY_QUEUES.read().unwrap()[pq_idx] {
-                        let s_frame_artist = s._song_artists.clone();
-
-                        if artist_frame_name != s_frame_artist {
-                            let mut c = lb_pack.child(i).expect("Expected child");
-                            c.hide();
-                        } else if artist_frame_name == s_frame_artist {
+                    let f_name = _f.label();
+                    println!("[DEBUG]\t{f_name} Frame Pressed");
+                    // All pressed.. show all
+                    // NOTE:
+                    // Do similar logic for 'Unknown Artist'
+                    if artist_frame_name == "All".to_owned() {
+                        println!("[DEBUG]\tAll pressed");
+                        for _s in &MUSIC_LIBRARIES.read().unwrap()[pq_idx] {
                             let mut c = lb_pack.child(i).expect("Expected child");
                             c.show();
+                            i += 1;
                         }
-                        i += 1;
+                    } else {
+                        for s in &MUSIC_LIBRARIES.read().unwrap()[pq_idx] {
+                            let s_frame_artist = s._song_artists.clone();
+
+                            if artist_frame_name != s_frame_artist {
+                                let mut c = lb_pack.child(i).expect("Expected child");
+                                c.hide();
+                            } else if artist_frame_name == s_frame_artist {
+                                let mut c = lb_pack.child(i).expect("Expected child");
+                                c.show();
+                            }
+                            i += 1;
+                        }
                     }
-                    //}
 
                     true
                 }
 
                 _ => true,
             });
-            ArtistFrame {
-                artist_frame,
-                tab_belong_idx,
-            }
+            ArtistFrame { artist_frame }
         }
     }
 
-    pub struct J_Button {
+    pub struct JButton {
         pub but: Button,
     }
-    widget_extends!(J_Button, Button, but);
-    impl J_Button {
+    widget_extends!(JButton, Button, but);
+    impl JButton {
         pub fn new() -> Self {
             let mut but = Button::default();
             but.set_color(COLOR_DICTIONARY.get().unwrap()[JedMP_Colors::Button_bg_color as usize]);
@@ -232,7 +216,7 @@ pub mod gui_resources {
             playlist_picker.add(&pl_pack);
 
             for pls in playlists {
-                let mut temp_b = J_Button::new().with_label(&pls).with_size(450, 30);
+                let mut temp_b = JButton::new().with_label(&pls).with_size(450, 30);
                 let tsp = song.to_owned();
                 temp_b.set_callback(move |_| {
                     add_song_to_playlst(&pls, tsp.to_owned());
@@ -248,9 +232,9 @@ pub mod gui_resources {
                 .below_of(&playlist_picker, 3)
                 .row();
 
-            let mut create_pl_but = J_Button::new().with_label("Create new");
+            let mut create_pl_but = JButton::new().with_label("Create new");
 
-            let mut cancel_but = J_Button::new().with_label("Close");
+            let mut cancel_but = JButton::new().with_label("Close");
 
             create_pl_but.set_callback(|_b| {
                 let _cpd = CreatePlaylistDialog::new();
@@ -302,7 +286,7 @@ pub mod gui_resources {
             let mut inp = input::Input::default().with_size(100, 0);
             inp.set_frame(FrameType::FlatBox);
 
-            let mut ok = J_Button::new().with_size(80, 0).with_label("Ok");
+            let mut ok = JButton::new().with_size(80, 0).with_label("Ok");
             pack.end();
             win.end();
             win.make_modal(true);
@@ -335,7 +319,6 @@ pub mod gui_resources {
             pwin_type: &SongIdentifierType,
             song: PlayQueueSong,
             _index: Option<usize>,
-            pq_belongs_to: usize,
         ) -> Self {
             let mut win = window::Window::default();
 
@@ -348,45 +331,42 @@ pub mod gui_resources {
             match pwin_type {
                 SongIdentifierType::LIBRARY => {
                     _choices = LIBRARY_OPTIONS.split(",").collect();
-                    let mut add_queue_but = J_Button::new()
+                    let mut add_queue_but = JButton::new()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
-                    let mut insert_next_but = J_Button::new()
+                    let mut insert_next_but = JButton::new()
                         .with_label(_choices[1])
                         .with_size(_choices[1].len() as i32 * 10, 25);
-                    let mut add_to_playlist = J_Button::new()
+                    let mut add_to_playlist = JButton::new()
                         .with_label(_choices[2])
                         .with_size(_choices.len() as i32 * 10, 25);
 
+                    let song_name = song.song_title.clone();
+                    let song_name_ = song_name.clone();
                     let song_: Rc<RefCell<PlayQueueSong>> = Rc::new(RefCell::new(song));
                     let song__ = Rc::clone(&song_);
                     let song___ = Rc::clone(&song_);
 
                     add_queue_but.set_callback(move |_| {
-                        println!("Appended to pq");
+                        let snnc = song_name_.clone();
+                        println!("[PopupWindow] Appended \"{snnc}\" pq");
 
-                        play_queue_handler::append_to_playqueue(
-                            song_.borrow().clone(),
-                            pq_belongs_to,
-                        );
+                        play_queue_handler::append_to_playqueue(song_.borrow().clone());
 
                         gui_state_controller::gui_controller::append_song_to_queue(
                             song_.borrow().clone(),
-                            pq_belongs_to,
                         );
                     });
                     insert_next_but.set_callback(move |_| {
-                        println!("Inserted in pq");
+                        println!("[PopupWindow] Inserted \"{song_name}\" to playqueue");
                         let current_index = PLAY_QUEUE_INDEX.read().unwrap();
                         play_queue_handler::insert_song_into_playqueue(
                             song__.borrow().clone(),
                             *current_index,
-                            pq_belongs_to,
                         );
                         gui_state_controller::gui_controller::insert_song_to_queue(
                             song__.borrow().clone(),
                             current_index.clone(),
-                            pq_belongs_to,
                         );
                     });
                     add_to_playlist.set_callback(move |_| {
@@ -404,22 +384,21 @@ pub mod gui_resources {
 
                     _choices = PLAYQUEUE_OPTIONS.split(",").collect();
 
-                    let mut remove_this_but = J_Button::new()
+                    let mut remove_this_but = JButton::new()
                         .with_label(_choices[0])
                         .with_size(_choices[0].len() as i32 * 10, 25);
 
-                    let mut play_now_but = J_Button::new()
+                    let mut play_now_but = JButton::new()
                         .with_label(_choices[1])
                         .with_size(_choices[1].len() as i32 * 10, 25);
 
-                    let mut stop_after_but = J_Button::new()
+                    let mut stop_after_but = JButton::new()
                         .with_label(_choices[2])
                         .with_size(_choices[2].len() as i32 * 10, 25);
 
                     remove_this_but.set_callback(move |_| {
                         play_queue_handler::remove_song_at_index(
                             song_.borrow().clone().index_in_play_queue,
-                            pq_belongs_to,
                         );
                         gui_state_controller::gui_controller::remove_song_from_playqueue(
                             song_.borrow().clone().index_in_play_queue,
@@ -468,8 +447,7 @@ pub mod gui_resources {
     #[derive(Debug)]
     pub struct SongIdentifier {
         group: Flex,
-        song_link: PlayQueueSong,
-        index_in_list: Option<usize>,
+        _song_link: PlayQueueSong,
     }
     // Constructor functions
     impl SongIdentifier {
@@ -481,7 +459,6 @@ pub mod gui_resources {
             iden_type: SongIdentifierType,
             song_link: PlayQueueSong,
             index_in_list: Option<usize>,
-            pq_belongs_to: usize,
         ) -> SongIdentifier {
             let mut group = Flex::default().with_size(w, h);
 
@@ -516,13 +493,9 @@ pub mod gui_resources {
                     if app::event_mouse_button() == app::MouseButton::Right {
                         let mx = app::event_x_root();
                         let my = app::event_y_root();
-                        let _popwin = PopupWindow::new(
-                            &iden_type,
-                            song_clone.clone(),
-                            index_in_list,
-                            pq_belongs_to,
-                        )
-                        .with_pos(mx, my);
+                        let _popwin =
+                            PopupWindow::new(&iden_type, song_clone.clone(), index_in_list)
+                                .with_pos(mx, my);
                     }
                     true
                 }
@@ -530,16 +503,14 @@ pub mod gui_resources {
             });
 
             group.end();
-            SongIdentifier {
-                group,
-                song_link,
-                index_in_list,
-            }
+            let _song_link = song_link;
+            SongIdentifier { group, _song_link }
         }
     }
 
     widget_extends!(SongIdentifier, group::Flex, group);
 
+    #[derive(Clone)]
     pub struct TabLibrary {
         pub lib_scroll: Scroll,
         pub scroll_pack: Pack,

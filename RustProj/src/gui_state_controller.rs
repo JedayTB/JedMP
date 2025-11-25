@@ -5,13 +5,14 @@ pub mod gui_controller {
     use crate::get_jedmp_musiccache_path;
     use crate::get_jedmp_playlist_dir;
     use crate::gui_resources::gui_resources::ArtistFrame;
-    use crate::gui_resources::gui_resources::J_Button;
+    use crate::gui_resources::gui_resources::JButton;
 
     use crate::gui_resources::gui_resources::PlaylistTab;
     use crate::gui_resources::gui_resources::SongIdentifier;
     use crate::gui_resources::gui_resources::SongIdentifierType;
     use crate::gui_resources::gui_resources::TabLibrary;
     use crate::music_cache_handler::music_file_handler;
+    use crate::music_play_queue_handler::play_queue_handler::MUSIC_LIBRARIES;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE_INDEX, PLAY_QUEUES, decrement_play_queue_index, increment_play_queue_index,
     };
@@ -26,12 +27,15 @@ pub mod gui_controller {
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc;
+    use std::rc::Rc;
     use std::sync::RwLock;
 
     // Shit way of making a global (Because can't do runtime functions for Pack)
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
     // Embrace the shit code. Another Global
     static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
+    // Man..
+    static ARTIST_VIEW_SCROLL: RwLock<Vec<Scroll>> = RwLock::new(Vec::new());
 
     // These globals arent too bad.
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
@@ -73,10 +77,11 @@ pub mod gui_controller {
         let menu_button_width = 30;
         let menu_button_height = 10;
 
-        let mut menu_button = J_Button::new()
+        let mut menu_button = JButton::new()
             .with_size(menu_button_width, menu_button_height)
             .with_label("Menu")
             .with_pos(0, 0);
+
         let button_box_height = BASE_WINDOW_HEIGHT / 12;
         let button_box_width = BASE_WINDOW_WIDTH;
         let button_box_pos_y = wind.h();
@@ -90,35 +95,99 @@ pub mod gui_controller {
             )
             .row();
 
-        let mut last_song_button = J_Button::new().with_label("<");
-        let mut pause_song_button = J_Button::new().with_label("Pause");
-        let mut next_song_button = J_Button::new().with_label(">");
+        let mut last_song_button = JButton::new().with_label("<");
+        let mut pause_song_button = JButton::new().with_label("Pause");
+        let mut next_song_button = JButton::new().with_label(">");
 
         button_box.end();
 
+        let row_width = BASE_WINDOW_WIDTH - menu_button_width - 350;
         let mut row = Flex::default()
-            .with_size(
-                BASE_WINDOW_WIDTH - menu_button_width,
-                BASE_WINDOW_HEIGHT - button_box_height - 10,
-            )
+            .with_size(row_width, BASE_WINDOW_HEIGHT - button_box_height - 10)
             .row()
             .with_pos(MENU_ARTISTVIEW_PAD, 0);
 
         row.set_color(get_jedmp_color(JedMP_Colors::Tabs_bg_color));
+
         let mut tabs = Tabs::default();
         tabs.handle_overflow(TabsOverflow::Compress);
         tabs.set_color(get_jedmp_color(JedMP_Colors::Background_color));
 
+        let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
+
+        let main_tab = PlaylistTab::new(get_jedmp_musiccache_path(), "All".to_owned(), 0, false);
+        let mtab_lib = rc::Rc::new(RefCell::new(main_tab.library));
+
+        tabs.end();
+        tabs.auto_layout();
+
+        row.end();
+
+        let artist_view_scroll = Scroll::default()
+            .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
+            .with_pos(0, 15);
+
+        artist_view_scroll.end();
+
+        ARTIST_VIEW_SCROLL.write().unwrap().push(artist_view_scroll);
+
+        make_artist_view_frames(mtab_lib.clone(), 0 as usize);
+
+        let play_queue_box_width = 250;
+        let play_queue_box_height = 300;
+
+        let mut main_playqueue = Scroll::default()
+            .with_size(play_queue_box_width, play_queue_box_height)
+            .with_pos(
+                BASE_WINDOW_WIDTH - play_queue_box_width - GENERAL_X_PAD,
+                GENERAL_Y_PAD * 2,
+            );
+        main_playqueue.set_color(get_jedmp_color(JedMP_Colors::Background_color));
+        main_playqueue.set_frame(FrameType::UpBox);
+
+        let mpq_pack = Pack::default_fill();
+
+        let sl = PlayQueueSong::new(
+            "balls".to_owned(),
+            "dummy".to_owned(),
+            "".to_owned(),
+            "".to_owned(),
+            0,
+        );
+        let dummy = SongIdentifier::new(
+            IN_PLAY_QUEUE_BOX_WIDTH,
+            IN_PLAY_QUEUE_BOX_HEIGHT,
+            &"dummy".to_owned(),
+            Align::Left,
+            SongIdentifierType::PLAYQUEUE,
+            sl,
+            Some(0 as usize),
+        );
+
+        mpq_pack.end();
+        main_playqueue.add(&mpq_pack);
+        main_playqueue.end();
+
+        SHARED_PLAY_QUEUE_GUI.write().unwrap().push(mpq_pack);
+        wind.end();
+        wind.make_resizable(true);
+        wind.show();
+
+        //
+        //  Create callbacks
+        //
         //FIXME:
         // This will error later, when user closes a tab. IE
         // tab1  tab2 tab3
         // * closes tab 2 *
         // tab1 tab3
         // this logic will asign idx = 1 (element 2) when it finds tab3.
-        // Possible fixes is removing tab2's playlists from PLAY_QUEUES and adjustinng indexes
+        // Possible fixes is removing tab2's library from MUSIC_LIBRARIES and adjusting indexes
         // accordingly. The other option is a custom tab implementation That returns PlaylistTab
         // instead of {impl GroupExt}
-        tabs.handle(|tb, e: Event| match e {
+        // Will also need to resize and restructure the MUSIC_LIBRARIES vec. Though this is easily
+        // doe with .remove(idx)
+        tabs.handle(move |tb, e: Event| match e {
             Event::Push => {
                 let tabs_children = tb.children();
                 let clicked_playlist = tb.push();
@@ -141,83 +210,44 @@ pub mod gui_controller {
 
                         i += 1;
                     }
+                    let art_view = &ARTIST_VIEW_SCROLL.write().unwrap()[0];
+                    let mut k = 0;
+                    while k < art_view.children() {
+                        let mut c = art_view
+                            .child(k)
+                            .expect("No Children / Child doesn't exist");
+
+                        if k != i {
+                            c.hide();
+                        } else {
+                            c.show();
+                        }
+                        k += 1;
+                    }
 
                     *CURRENT_PLAYLIST_INDEX.write().unwrap() = i as usize;
                 }
+                app::redraw();
                 true
             }
             _ => true,
         });
 
-        let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
-
-        let main_tab = PlaylistTab::new(get_jedmp_musiccache_path(), "All".to_owned(), 0);
-        let mtab_lib = rc::Rc::new(RefCell::new(main_tab.library));
-
-        tabs.end();
-        tabs.auto_layout();
-
-        row.end();
-
-        let artist_view_box = Scroll::default()
-            .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
-            .with_pos(0, 15);
-
-        let mut art_pack = Pack::default_fill();
-
-        let artist_frame_width = MENU_ARTISTVIEW_PAD;
-        let artist_frame_height = 50;
-
-        let mut art_hash: HashMap<String, ArtistFrame> = HashMap::new();
-
-        let misc_artist_frame =
-            ArtistFrame::new("Miscellaneous".to_owned(), 0 as usize, mtab_lib.clone())
-                .with_size(artist_frame_width, artist_frame_height)
-                .with_label("Miscellaneous");
-
-        art_pack.add(&*misc_artist_frame);
-        art_hash.insert("".to_owned(), misc_artist_frame);
-
-        for s in PLAY_QUEUES.read().unwrap()[0].clone() {
-            let artist_name = s._song_artists;
-
-            if art_hash.contains_key(&artist_name) == false {
-                let artist_frame =
-                    ArtistFrame::new(artist_name.clone(), 0 as usize, mtab_lib.clone())
-                        .with_size(artist_frame_width, artist_frame_height)
-                        .with_label(&artist_name);
-
-                art_pack.add(&*artist_frame);
-                art_hash.insert(artist_name, artist_frame);
-            }
-        }
-
-        art_pack.end();
-        artist_view_box.end();
-        wind.end();
-        wind.make_resizable(true);
-        wind.show();
-
-        //
-        //  Create callbacks
-        //
-
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let s = Sink::try_new(&stream_handle).unwrap();
         SHARED_SINK.write().unwrap().push(s);
+
         last_song_button.set_callback(move |_| {
-            let cur_pl = *CURRENT_PLAYLIST_INDEX.read().unwrap();
             // Goes back a song. Replays song if already at 0th index
             let play_ind = decrement_play_queue_index().unwrap_or(0);
-            let next_song_path = PLAY_QUEUES.read().unwrap()[cur_pl][play_ind].clone();
+            let next_song_path = PLAY_QUEUES.read().unwrap()[play_ind].clone();
             let new_source = music_file_handler::load_path(&next_song_path.song_path);
             SHARED_SINK.write().unwrap()[0].stop();
             SHARED_SINK.write().unwrap()[0].append(new_source);
             SHARED_SINK.write().unwrap()[0].play();
         });
         next_song_button.set_callback(move |_| {
-            let cur_pl = *CURRENT_PLAYLIST_INDEX.read().unwrap();
-            let play_ind = increment_play_queue_index(cur_pl);
+            let play_ind = increment_play_queue_index();
 
             if play_ind == None {
                 // Other logic here, check if replay playlist is on for example.
@@ -227,8 +257,7 @@ pub mod gui_controller {
 
                 SHARED_SINK.write().unwrap()[0].stop();
             } else {
-                let cur_pl = *CURRENT_PLAYLIST_INDEX.read().unwrap();
-                let next_song_path = PLAY_QUEUES.read().unwrap()[cur_pl][play_ind.unwrap()].clone();
+                let next_song_path = PLAY_QUEUES.read().unwrap()[play_ind.unwrap()].clone();
                 let next_source = music_file_handler::load_path(&next_song_path.song_path);
 
                 SHARED_SINK.write().unwrap()[0].stop();
@@ -240,10 +269,7 @@ pub mod gui_controller {
         pause_song_button.set_callback(move |btn| {
             if SHARED_SINK.read().unwrap()[0].empty() || *RELOAD_SINK.read().unwrap() == true {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
-                let cur_pl = CURRENT_PLAYLIST_INDEX.read().unwrap();
-                let idx = *cur_pl;
-                println!("Load song from {idx} playlist");
-                let path = PLAY_QUEUES.read().unwrap()[*cur_pl][*ind].clone();
+                let path = PLAY_QUEUES.read().unwrap()[*ind].clone();
                 let source = music_file_handler::load_path(&path.song_path);
                 // Stops playback and clears all appened files
 
@@ -277,7 +303,7 @@ pub mod gui_controller {
             let rcwin = rc::Rc::new(RefCell::new(cwind.clone()));
             cwind.set_border(false);
             let flex = Flex::default_fill().column();
-            let mut add_mus_dir_but = J_Button::new().with_label("Add Music Directory");
+            let mut add_mus_dir_but = JButton::new().with_label("Add Music Directory");
 
             let sh_lib_inner = sh_lib_list.clone();
 
@@ -313,7 +339,7 @@ pub mod gui_controller {
                 }
             });
 
-            let mut add_playlist_tab = J_Button::new().with_label("Open Playlist");
+            let mut add_playlist_tab = JButton::new().with_label("Open Playlist");
 
             let sh_tab_inner = sh_tab.clone();
 
@@ -334,9 +360,7 @@ pub mod gui_controller {
 
                 let sh_tab_inner_inner = sh_tab_inner.clone();
                 for playlist_name in playlists {
-                    let mut temp_b = J_Button::new()
-                        .with_label(&playlist_name)
-                        .with_size(450, 30);
+                    let mut temp_b = JButton::new().with_label(&playlist_name).with_size(450, 30);
 
                     let sht = sh_tab_inner_inner.clone();
                     let rw = r_wind.clone();
@@ -349,7 +373,7 @@ pub mod gui_controller {
 
                         *PLAYLIST_COUNT.write().unwrap() += 1;
                         let pl_idx = *PLAYLIST_COUNT.read().unwrap();
-                        let mut newPlTab = PlaylistTab::new(plPath, pl_name, pl_idx);
+                        let mut newPlTab = PlaylistTab::new(plPath, pl_name, pl_idx, true);
                         newPlTab.set_trigger(CallbackTrigger::Closed);
                         newPlTab.set_callback(tab_close_cb);
                         tab.add(&*newPlTab);
@@ -392,7 +416,7 @@ pub mod gui_controller {
         let pl_ind = which_pq;
         tablib.scroll_pack.resize(0, 0, w, h);
 
-        for song in PLAY_QUEUES.read().unwrap()[pl_ind].iter() {
+        for song in MUSIC_LIBRARIES.read().unwrap()[pl_ind].iter() {
             let si = SongIdentifier::new(
                 100,
                 30,
@@ -401,42 +425,11 @@ pub mod gui_controller {
                 SongIdentifierType::LIBRARY,
                 song.to_owned(),
                 None,
-                which_pq,
             );
             tablib.scroll_pack.add(&*si);
         }
 
         app::redraw();
-    }
-
-    pub fn make_queue_list_frames(play_queue_box: &mut Scroll, which_pq: usize) {
-        // yes this is jank as fuck. No I don't care.
-        SHARED_PLAY_QUEUE_GUI.write().unwrap().clear();
-
-        let pl_ind = which_pq;
-        let mut pack = Pack::default().with_size(500, 400); //_fill();
-        pack.make_resizable(true);
-        play_queue_box.add(&pack);
-
-        let mut i: i32 = 0;
-        for queued_song in PLAY_QUEUES.read().unwrap()[pl_ind].iter() {
-            let song_iden = SongIdentifier::new(
-                IN_PLAY_QUEUE_BOX_WIDTH,
-                IN_PLAY_QUEUE_BOX_HEIGHT,
-                &queued_song.song_title,
-                fltk::enums::Align::Center,
-                SongIdentifierType::PLAYQUEUE,
-                queued_song.to_owned(),
-                Some(i as usize),
-                which_pq,
-            );
-            pack.add(&*song_iden);
-            i += 1;
-        }
-        pack.end();
-        play_queue_box.auto_layout();
-        play_queue_box.scroll_to(-637, -40);
-        SHARED_PLAY_QUEUE_GUI.write().unwrap().push(pack);
     }
 
     fn tab_close_cb(g: &mut impl GroupExt) {
@@ -447,9 +440,46 @@ pub mod gui_controller {
         }
     }
 
-    pub fn append_song_to_queue(pq_song: PlayQueueSong, which_pq: usize) {
-        let pl_ind = CURRENT_PLAYLIST_INDEX.read().unwrap().clone();
+    pub fn make_artist_view_frames(tablib_link: Rc<RefCell<TabLibrary>>, mus_lib_idx: usize) {
+        let mut art_hash: HashMap<String, ArtistFrame> = HashMap::new();
 
+        let artist_frame_width = MENU_ARTISTVIEW_PAD;
+        let artist_frame_height = 50;
+        let mut art_pack = Pack::default_fill();
+        let misc_artist_frame = ArtistFrame::new("All".to_owned(), tablib_link.clone())
+            .with_size(artist_frame_width, artist_frame_height)
+            .with_label("All");
+
+        art_pack.add(&*misc_artist_frame);
+        art_hash.insert("".to_owned(), misc_artist_frame);
+
+        for s in MUSIC_LIBRARIES.read().unwrap()[mus_lib_idx].clone() {
+            let artist_name = s._song_artists;
+
+            if art_hash.contains_key(&artist_name) == false {
+                // For song's without artist metadata
+                if artist_name == "".to_owned() {
+                    let artist_frame =
+                        ArtistFrame::new("Unnamed Artist".to_owned(), tablib_link.clone())
+                            .with_size(artist_frame_width, artist_frame_height)
+                            .with_label(&"Unnamed Artist");
+
+                    art_pack.add(&*artist_frame);
+                    art_hash.insert("Unnamed Artist".to_owned(), artist_frame);
+                } else {
+                    let artist_frame = ArtistFrame::new(artist_name.clone(), tablib_link.clone())
+                        .with_size(artist_frame_width, artist_frame_height)
+                        .with_label(&artist_name);
+
+                    art_pack.add(&*artist_frame);
+                    art_hash.insert(artist_name, artist_frame);
+                }
+            }
+        }
+        ARTIST_VIEW_SCROLL.write().unwrap()[0].add(&art_pack);
+    }
+
+    pub fn append_song_to_queue(pq_song: PlayQueueSong) {
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,
             IN_PLAY_QUEUE_BOX_HEIGHT,
@@ -457,14 +487,12 @@ pub mod gui_controller {
             fltk::enums::Align::Center,
             SongIdentifierType::PLAYQUEUE,
             pq_song.to_owned(),
-            Some(PLAY_QUEUES.read().unwrap()[pl_ind].len() - 1),
-            which_pq,
+            Some(PLAY_QUEUES.read().unwrap().len() - 1),
         );
         SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
         app::redraw();
     }
-    pub fn insert_song_to_queue(pq_song: PlayQueueSong, current_index: usize, which_pq: usize) {
-        let pl_ind = CURRENT_PLAYLIST_INDEX.read().unwrap().clone();
+    pub fn insert_song_to_queue(pq_song: PlayQueueSong, current_index: usize) {
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,
             IN_PLAY_QUEUE_BOX_HEIGHT,
@@ -472,8 +500,7 @@ pub mod gui_controller {
             fltk::enums::Align::Center,
             SongIdentifierType::PLAYQUEUE,
             pq_song.to_owned(),
-            Some(PLAY_QUEUES.read().unwrap()[pl_ind].len() - 1),
-            which_pq,
+            Some(PLAY_QUEUES.read().unwrap().len() - 1),
         );
 
         SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);

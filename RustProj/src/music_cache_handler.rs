@@ -86,7 +86,8 @@ pub mod music_file_handler {
         let extension = pathstr.split(".").last().unwrap_or("").to_owned();
         //println!("(Found extension) {:?}", extension);
 
-        if extension == "mp3" || extension == "flac" || extension == "wav" || extension == "opus" {
+        if extension == "mp3" || extension == "flac" || extension == "wav" || extension == "vorbis"
+        {
             let tF = taglib::File::new(&pathstr).expect("Coudln't open song file as taglib file");
 
             let album = tF
@@ -112,6 +113,10 @@ pub mod music_file_handler {
             }
             let s = format!("{pathstr}\x00{title}\x00{album}\x00{artist}\n");
             music_cache_vec.push(s);
+        } else {
+            println!(
+                "[Debug] skipping {pathstr} - non acceptable file codec. Extension: {extension}"
+            );
         }
     }
     pub fn process_existing_song_to_string(song: PlayQueueSong) -> String {
