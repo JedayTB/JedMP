@@ -36,13 +36,13 @@ pub mod color_handler {
         let exists = pathb.try_exists().expect("Path doesn't exist");
 
         if exists {
-            println!("[Colors Handler] colorrc found. Loading...");
+            println!("[Debug/Colors Handler] colorrc found. Loading...");
             load_colorrc(&color_rc_file_path);
         } else {
-            println!("[Colors Handler] colorrc not found. Creating with defaults.");
+            println!("[Debug/Colors Handler] colorrc not found. Creating with defaults.");
             //"Unable to create colorrc. Aborting."
             let mut crc = File::create(&color_rc_file_path).unwrap();
-            println!("[Colors Handler] colorrc created. Populating with defaults.");
+            println!("[Debug/Colors Handler] colorrc created. Populating with defaults.");
             write_colorrc_defaults(&mut crc);
             load_colorrc(&color_rc_file_path);
         }
@@ -78,7 +78,7 @@ pub mod color_handler {
 
         COLOR_DICTIONARY
             .set(colors)
-            .expect("Couldn't set COLOR_DICTIONARY");
+            .expect("[Colors handler] Couldn't set COLOR_DICTIONARY");
     }
     /*
     #f7768e #f7768e 	This keyword, HTML elements, Regex group symbol, CSS units, Terminal Red
@@ -115,6 +115,6 @@ Scroll_bar_color:#565F89
 Tabs_bg_color:#414868";
 
         write!(colorrc_file, "{}", colorrc_default_fields)
-            .expect("[Colors Handler] Could not write to colorrc");
+            .expect("[Debug/Colors Handler] Could not write to colorrc");
     }
 }

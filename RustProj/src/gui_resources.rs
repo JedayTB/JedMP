@@ -1,8 +1,6 @@
 pub mod gui_resources {
 
-    use crate::{
-        gui_state_controller, music_play_queue_handler::play_queue_handler::PLAY_QUEUE_INDEX,
-    };
+    use crate::gui_state_controller;
     use fltk::{button::Button, enums::Color, enums::Event, prelude::*, *};
     use fltk::{enums::Align, text::*};
 
@@ -349,7 +347,7 @@ pub mod gui_resources {
 
                     add_queue_but.set_callback(move |_| {
                         let snnc = song_name_.clone();
-                        println!("[PopupWindow] Appended \"{snnc}\" pq");
+                        println!("[Debug/PopupWindow] Appended \"{snnc}\" pq");
 
                         play_queue_handler::append_to_playqueue(song_.borrow().clone());
 
@@ -358,18 +356,14 @@ pub mod gui_resources {
                         );
                     });
                     insert_next_but.set_callback(move |_| {
-                        println!("[PopupWindow] Inserted \"{song_name}\" to playqueue");
-                        let current_index = PLAY_QUEUE_INDEX.read().unwrap();
-                        play_queue_handler::insert_song_into_playqueue(
-                            song__.borrow().clone(),
-                            *current_index,
-                        );
+                        println!("[Debug/PopupWindow] Inserted \"{song_name}\" to playqueue");
+                        play_queue_handler::insert_song_into_playqueue(song__.borrow().clone());
                         gui_state_controller::gui_controller::insert_song_to_queue(
                             song__.borrow().clone(),
-                            current_index.clone(),
                         );
                     });
                     add_to_playlist.set_callback(move |_| {
+                        println!("[Debug/PopupWindow] add to playlist pressed");
                         // Check if any playlists exist
                         // If none prompt
                         let mx = app::event_x_root();
@@ -397,24 +391,42 @@ pub mod gui_resources {
                         .with_size(_choices[2].len() as i32 * 10, 25);
 
                     remove_this_but.set_callback(move |_| {
+                        println!("[Debug/PopupWindow] remove song pressed");
                         play_queue_handler::remove_song_at_index(
-                            song_.borrow().clone().index_in_play_queue,
+                            song_
+                                .borrow()
+                                .clone()
+                                .index_in_play_queue
+                                .expect("Possible expect of a musiclib PlayQueueSong"),
                         );
                         gui_state_controller::gui_controller::remove_song_from_playqueue(
-                            song_.borrow().clone().index_in_play_queue,
+                            song_
+                                .borrow()
+                                .clone()
+                                .index_in_play_queue
+                                .expect("Possible expect of a musiclib PlayQueueSong"),
                         );
                     });
 
                     play_now_but.set_callback(move |_| {
+                        println!("[Debug/PopupWindow] play now pressed");
+                        let pqs_idx = song__.borrow_mut().index_in_play_queue.clone();
+                        print!("pqs_idx = ");
+                        dbg!(pqs_idx);
                         play_queue_handler::play_song_instant(
-                            song__.borrow().clone().index_in_play_queue,
+                            song__
+                                .borrow()
+                                .clone()
+                                .index_in_play_queue
+                                .expect("idx = None: Possible expect of a musiclib PlayQueueSong"),
                         );
                         gui_state_controller::gui_controller::sink_play_instant(
                             song__.borrow().clone(),
                         );
                     });
 
-                    stop_after_but.set_callback(move |_| println!("Not Implemented yet"));
+                    stop_after_but
+                        .set_callback(move |_| println!("[Debug/PopupWindow] Not Implemented yet"));
                 }
             }
 

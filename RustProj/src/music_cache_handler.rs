@@ -3,10 +3,10 @@ pub mod music_file_handler {
     use std::fs::{self, OpenOptions};
     use std::time::SystemTime;
 
+    use crate::get_jedmp_musiccache_path;
     use crate::play_queue_song::PlayQueueSong;
-    use crate::{get_jedmp_musiccache_path, music_play_queue_handler};
     use rodio::Decoder;
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::{BufReader, Write};
     use std::path::PathBuf;
 
     pub fn load_path(path_to_song: &String) -> Decoder<BufReader<File>> {
@@ -154,9 +154,9 @@ pub mod music_file_handler {
         {
             println!("Jed MP Folder does not exist. Creating and populating...");
             File::create(&cachedfiles_path_str).unwrap();
-            println!("[Debug] Created cachedmusic file");
+            println!("[Debug/music_cache_handler] Created cachedmusic file");
         } else {
-            println!("[Debug] Cached Music Found, Loading library...");
+            println!("[Debug/music_cache_handler] Cached Music Found, Loading library...");
             load_cached_songs();
         }
     }
@@ -172,9 +172,10 @@ pub mod music_file_handler {
             println!("There's no cached music! Choose a directory to load.");
         }
 
-        let buf_reader = BufReader::new(cached_music_file);
-        let string_it = buf_reader.lines();
         // Only ever creates Full Libary tab playqueue
-        music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
+        // Also don't run this. No need to have playqueues on startup
+        // let buf_reader = BufReader::new(cached_music_file);
+        // let string_it = buf_reader.lines();
+        // music_play_queue_handler::play_queue_handler::create_playqueue(string_it);
     }
 }

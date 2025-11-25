@@ -19,6 +19,7 @@ pub mod gui_controller {
     use crate::play_queue_song::PlayQueueSong;
     use crate::playlist_handler::playlist_handler::get_playlists_names;
     use fltk::dialog;
+    use fltk::frame::Frame;
     use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
@@ -37,6 +38,7 @@ pub mod gui_controller {
     // Man..
     static ARTIST_VIEW_SCROLL: RwLock<Vec<Scroll>> = RwLock::new(Vec::new());
 
+    static CURRENT_PLAYING_SONG: RwLock<Vec<Frame>> = RwLock::new(Vec::new());
     // These globals arent too bad.
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
     static PLAYLIST_COUNT: RwLock<usize> = RwLock::new(0);
@@ -82,17 +84,15 @@ pub mod gui_controller {
             .with_label("Menu")
             .with_pos(0, 0);
 
-        let button_box_height = BASE_WINDOW_HEIGHT / 12;
+        let button_box_height = BASE_WINDOW_HEIGHT / 18;
         let button_box_width = BASE_WINDOW_WIDTH;
-        let button_box_pos_y = wind.h();
-        let button_box_pos_x = BASE_WINDOW_WIDTH / 2;
+        let button_box_pos_y = wind.h() - button_box_height - 5;
+        let button_box_pos_x =
+            (BASE_WINDOW_WIDTH / 2) - (button_box_width / 2) + MENU_ARTISTVIEW_PAD;
 
         let button_box = Flex::default()
             .with_size(button_box_width - MENU_ARTISTVIEW_PAD, button_box_height)
-            .with_pos(
-                (button_box_pos_x - button_box_width / 2) + MENU_ARTISTVIEW_PAD,
-                button_box_pos_y - button_box_height - 5,
-            )
+            .with_pos(button_box_pos_x, button_box_pos_y)
             .row();
 
         let mut last_song_button = JButton::new().with_label("<");
@@ -101,9 +101,24 @@ pub mod gui_controller {
 
         button_box.end();
 
+        let mut song_info_box = Flex::default()
+            .with_size(button_box_width, button_box_height)
+            .with_pos(button_box_pos_x, button_box_pos_y - button_box_height - 5);
+
+        let current_playing_song_frame = Frame::default().with_label("Current song here\t\t00:00");
+
+        CURRENT_PLAYING_SONG
+            .write()
+            .unwrap()
+            .push(current_playing_song_frame);
+
+        song_info_box.set_frame(FrameType::FlatBox);
+        song_info_box.end();
         let row_width = BASE_WINDOW_WIDTH - menu_button_width - 350;
+        let row_height = BASE_WINDOW_HEIGHT - (BASE_WINDOW_HEIGHT / 6) - 10;
+
         let mut row = Flex::default()
-            .with_size(row_width, BASE_WINDOW_HEIGHT - button_box_height - 10)
+            .with_size(row_width, row_height)
             .row()
             .with_pos(MENU_ARTISTVIEW_PAD, 0);
 
@@ -223,11 +238,8 @@ pub mod gui_controller {
         last_song_button.set_callback(move |_| {
             // Goes back a song. Replays song if already at 0th index
             let play_ind = decrement_play_queue_index().unwrap_or(0);
-            let next_song_path = PLAY_QUEUES.read().unwrap()[play_ind].clone();
-            let new_source = music_file_handler::load_path(&next_song_path.song_path);
-            SHARED_SINK.write().unwrap()[0].stop();
-            SHARED_SINK.write().unwrap()[0].append(new_source);
-            SHARED_SINK.write().unwrap()[0].play();
+            let next_song = PLAY_QUEUES.read().unwrap()[play_ind].clone();
+            update_sink(next_song);
         });
         next_song_button.set_callback(move |_| {
             let play_ind = increment_play_queue_index();
@@ -240,25 +252,19 @@ pub mod gui_controller {
 
                 SHARED_SINK.write().unwrap()[0].stop();
             } else {
-                let next_song_path = PLAY_QUEUES.read().unwrap()[play_ind.unwrap()].clone();
-                let next_source = music_file_handler::load_path(&next_song_path.song_path);
-
-                SHARED_SINK.write().unwrap()[0].stop();
-                SHARED_SINK.write().unwrap()[0].append(next_source);
-                SHARED_SINK.write().unwrap()[0].play();
+                let next_song = PLAY_QUEUES.read().unwrap()[play_ind.unwrap()].clone();
+                update_sink(next_song);
             }
         });
 
         pause_song_button.set_callback(move |btn| {
+            //FIXME:
+            //Breaks when playqueue is empty.
             if SHARED_SINK.read().unwrap()[0].empty() || *RELOAD_SINK.read().unwrap() == true {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
-                let path = PLAY_QUEUES.read().unwrap()[*ind].clone();
-                let source = music_file_handler::load_path(&path.song_path);
-                // Stops playback and clears all appened files
-
-                SHARED_SINK.write().unwrap()[0].stop();
-                SHARED_SINK.write().unwrap()[0].append(source);
-                SHARED_SINK.write().unwrap()[0].play();
+                println!("pq idx: {ind}");
+                let song = PLAY_QUEUES.read().unwrap()[*ind].clone();
+                update_sink(song);
                 *RELOAD_SINK.write().unwrap() = false;
             }
 
@@ -392,6 +398,72 @@ pub mod gui_controller {
         app.run().unwrap();
     }
 
+    fn update_sink(pqs: PlayQueueSong) {
+        let s_name = pqs.song_title.clone();
+        let pq_idx = *PLAY_QUEUE_INDEX.read().unwrap();
+
+        println!("[Debug] New song: {s_name}\tpq idx: {pq_idx}");
+        let source = music_file_handler::load_path(&pqs.song_path);
+
+        // Stops playback and clears all appened files
+        SHARED_SINK.write().unwrap()[0].stop();
+        SHARED_SINK.write().unwrap()[0].append(source);
+        SHARED_SINK.write().unwrap()[0].play();
+
+        update_current_playing_song(pqs.song_title, "00:00".to_string());
+    }
+    fn tab_close_cb(g: &mut impl GroupExt) {
+        if app::callback_reason() == CallbackReason::Closed {
+            let mut parent = g.parent().unwrap();
+            parent.remove(g);
+            app::redraw();
+        }
+    }
+    fn update_current_playing_song(s_name: String, s_time: String) {
+        let set_s = format!("{s_name}\t\t{s_time}");
+        CURRENT_PLAYING_SONG.write().unwrap()[0].set_label(&set_s);
+    }
+
+    pub fn append_song_to_queue(pq_song: PlayQueueSong) {
+        let song_iden = SongIdentifier::new(
+            IN_PLAY_QUEUE_BOX_WIDTH,
+            IN_PLAY_QUEUE_BOX_HEIGHT,
+            &pq_song.song_title,
+            fltk::enums::Align::Center,
+            SongIdentifierType::PLAYQUEUE,
+            pq_song.to_owned(),
+            Some(PLAY_QUEUES.read().unwrap().len() - 1),
+        );
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
+        app::redraw();
+    }
+    pub fn insert_song_to_queue(pq_song: PlayQueueSong) {
+        let current_index = *PLAY_QUEUE_INDEX.read().unwrap();
+
+        let song_iden = SongIdentifier::new(
+            IN_PLAY_QUEUE_BOX_WIDTH,
+            IN_PLAY_QUEUE_BOX_HEIGHT,
+            &pq_song.song_title,
+            fltk::enums::Align::Center,
+            SongIdentifierType::PLAYQUEUE,
+            pq_song.to_owned(),
+            Some(PLAY_QUEUES.read().unwrap().len() - 1),
+        );
+
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);
+        app::redraw();
+    }
+
+    pub fn sink_play_instant(pq_song: PlayQueueSong) {
+        *PLAY_QUEUE_INDEX.write().unwrap() = pq_song
+            .index_in_play_queue
+            .clone()
+            .expect("Possible expect of a musiclib PlayQueueSong");
+        update_sink(pq_song);
+    }
+    pub fn remove_song_from_playqueue(rm_index: usize) {
+        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].remove_by_index(rm_index as i32);
+    }
     pub fn make_library_list_frames(tablib: &mut TabLibrary, which_pq: usize) {
         tablib.scroll_pack.clear();
         let w = tablib.lib_scroll.w();
@@ -414,15 +486,6 @@ pub mod gui_controller {
 
         app::redraw();
     }
-
-    fn tab_close_cb(g: &mut impl GroupExt) {
-        if app::callback_reason() == CallbackReason::Closed {
-            let mut parent = g.parent().unwrap();
-            parent.remove(g);
-            app::redraw();
-        }
-    }
-
     pub fn make_artist_view_frames(tablib_link: Rc<RefCell<TabLibrary>>, mus_lib_idx: usize) {
         let mut art_hash: HashMap<String, ArtistFrame> = HashMap::new();
 
@@ -469,45 +532,5 @@ pub mod gui_controller {
         }
         art_pack.end();
         ARTIST_VIEW_SCROLL.write().unwrap()[0].add(&art_pack);
-    }
-
-    pub fn append_song_to_queue(pq_song: PlayQueueSong) {
-        let song_iden = SongIdentifier::new(
-            IN_PLAY_QUEUE_BOX_WIDTH,
-            IN_PLAY_QUEUE_BOX_HEIGHT,
-            &pq_song.song_title,
-            fltk::enums::Align::Center,
-            SongIdentifierType::PLAYQUEUE,
-            pq_song.to_owned(),
-            Some(PLAY_QUEUES.read().unwrap().len() - 1),
-        );
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
-        app::redraw();
-    }
-    pub fn insert_song_to_queue(pq_song: PlayQueueSong, current_index: usize) {
-        let song_iden = SongIdentifier::new(
-            IN_PLAY_QUEUE_BOX_WIDTH,
-            IN_PLAY_QUEUE_BOX_HEIGHT,
-            &pq_song.song_title,
-            fltk::enums::Align::Center,
-            SongIdentifierType::PLAYQUEUE,
-            pq_song.to_owned(),
-            Some(PLAY_QUEUES.read().unwrap().len() - 1),
-        );
-
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);
-        app::redraw();
-    }
-
-    pub fn sink_play_instant(pq_song: PlayQueueSong) {
-        let source = music_file_handler::load_path(&pq_song.song_path);
-        // Stops playback and clears all appened files
-
-        SHARED_SINK.write().unwrap()[0].stop();
-        SHARED_SINK.write().unwrap()[0].append(source);
-        SHARED_SINK.write().unwrap()[0].play();
-    }
-    pub fn remove_song_from_playqueue(rm_index: usize) {
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].remove_by_index(rm_index as i32);
     }
 }

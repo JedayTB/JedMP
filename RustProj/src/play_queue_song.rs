@@ -7,7 +7,7 @@ pub struct PlayQueueSong {
     pub _song_album: String,
     pub _song_artists: String,
     pub _song_image_path: String,
-    pub index_in_play_queue: usize,
+    pub index_in_play_queue: Option<usize>,
 }
 
 impl PlayQueueSong {
@@ -16,14 +16,14 @@ impl PlayQueueSong {
         song_title: String,
         song_album: String,
         song_artist: String,
-        index_in_pq: usize,
+        index_in_pq: Option<usize>,
     ) -> PlayQueueSong {
         let song_path = song_path;
         let song_title = song_title;
         let _song_album = song_album;
         let _song_artists = song_artist;
         let _song_image_path = "Not implemented yet.".to_owned();
-        let index_in_play_queue: usize = index_in_pq;
+        let index_in_play_queue = index_in_pq;
 
         PlayQueueSong {
             song_path,
