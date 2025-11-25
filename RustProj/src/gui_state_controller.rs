@@ -147,23 +147,6 @@ pub mod gui_controller {
 
         let mpq_pack = Pack::default_fill();
 
-        let sl = PlayQueueSong::new(
-            "balls".to_owned(),
-            "dummy".to_owned(),
-            "".to_owned(),
-            "".to_owned(),
-            0,
-        );
-        let dummy = SongIdentifier::new(
-            IN_PLAY_QUEUE_BOX_WIDTH,
-            IN_PLAY_QUEUE_BOX_HEIGHT,
-            &"dummy".to_owned(),
-            Align::Left,
-            SongIdentifierType::PLAYQUEUE,
-            sl,
-            Some(0 as usize),
-        );
-
         mpq_pack.end();
         main_playqueue.add(&mpq_pack);
         main_playqueue.end();
@@ -445,7 +428,13 @@ pub mod gui_controller {
 
         let artist_frame_width = MENU_ARTISTVIEW_PAD;
         let artist_frame_height = 50;
-        let mut art_pack = Pack::default_fill();
+
+        let p_width = ARTIST_VIEW_SCROLL.read().unwrap()[0].w();
+        let p_height = ARTIST_VIEW_SCROLL.read().unwrap()[0].h();
+
+        let mut art_pack = Pack::default().with_size(p_width, p_height);
+        art_pack.set_align(Align::Left);
+
         let misc_artist_frame = ArtistFrame::new("All".to_owned(), tablib_link.clone())
             .with_size(artist_frame_width, artist_frame_height)
             .with_label("All");
@@ -459,23 +448,26 @@ pub mod gui_controller {
             if art_hash.contains_key(&artist_name) == false {
                 // For song's without artist metadata
                 if artist_name == "".to_owned() {
-                    let artist_frame =
+                    let mut artist_frame =
                         ArtistFrame::new("Unnamed Artist".to_owned(), tablib_link.clone())
                             .with_size(artist_frame_width, artist_frame_height)
                             .with_label(&"Unnamed Artist");
-
+                    artist_frame.set_align(Align::Left);
                     art_pack.add(&*artist_frame);
                     art_hash.insert("Unnamed Artist".to_owned(), artist_frame);
                 } else {
-                    let artist_frame = ArtistFrame::new(artist_name.clone(), tablib_link.clone())
-                        .with_size(artist_frame_width, artist_frame_height)
-                        .with_label(&artist_name);
+                    let mut artist_frame =
+                        ArtistFrame::new(artist_name.clone(), tablib_link.clone())
+                            .with_size(artist_frame_width, artist_frame_height)
+                            .with_label(&artist_name);
 
+                    artist_frame.set_align(Align::Center);
                     art_pack.add(&*artist_frame);
                     art_hash.insert(artist_name, artist_frame);
                 }
             }
         }
+        art_pack.end();
         ARTIST_VIEW_SCROLL.write().unwrap()[0].add(&art_pack);
     }
 

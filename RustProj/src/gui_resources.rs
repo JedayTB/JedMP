@@ -64,7 +64,7 @@ pub mod gui_resources {
             tab_group.set_color(get_jedmp_color(JedMP_Colors::Background_color));
 
             let library_list_width = 500;
-            let library_list_height = 300;
+            let library_list_height = 450;
 
             let library_list_pos_x = GENERAL_X_PAD;
             let library_list_pos_y = 0;
