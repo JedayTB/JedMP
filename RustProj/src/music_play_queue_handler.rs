@@ -82,16 +82,20 @@ pub mod play_queue_handler {
         }
     }
 
-    pub fn insert_song_into_playqueue(mut pq_song: PlayQueueSong) {
+    ///Returns index of appended song in current playqueue
+    ///PLEASE make a copy of pq_song parametre with updated index.
+    pub fn insert_song_into_playqueue(mut pq_song: PlayQueueSong) -> usize {
         let current_index = *PLAY_QUEUE_INDEX.read().unwrap();
         pq_song.index_in_play_queue = Some(current_index);
         PLAY_QUEUES.write().unwrap().insert(current_index, pq_song);
 
         adjust_playqueue(current_index as i32);
+        return current_index;
     }
-    pub fn append_to_playqueue(pq_song: PlayQueueSong) {
+    ///Returns index of appended song in current playqueue
+    ///PLEASE make a copy of pq_song parametre with updated index.
+    pub fn append_to_playqueue(pq_song: PlayQueueSong) -> usize {
         // Not + 1 because len is already PLAY_QUEUE_INDEX + 1 (elements, not index)
-        //
         let new_idx = PLAY_QUEUES.read().unwrap().len();
 
         let mut new_pqs = pq_song.clone();
@@ -100,8 +104,9 @@ pub mod play_queue_handler {
         let nn = new_pqs.index_in_play_queue;
         print!("New val");
         dbg!(nn);
-        PLAY_QUEUES.write().unwrap().push(new_pqs.to_owned());
+        PLAY_QUEUES.write().unwrap().push(new_pqs.clone());
         dbg!(&PLAY_QUEUES.read().unwrap());
+        return new_idx;
     }
     pub fn remove_from_playqueue(index: usize) {
         PLAY_QUEUES.write().unwrap().remove(index);

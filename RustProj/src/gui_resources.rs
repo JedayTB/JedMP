@@ -349,18 +349,21 @@ pub mod gui_resources {
                         let snnc = song_name_.clone();
                         println!("[Debug/PopupWindow] Appended \"{snnc}\" pq");
 
-                        play_queue_handler::append_to_playqueue(song_.borrow().clone());
+                        let apnd_idx =
+                            play_queue_handler::append_to_playqueue(song_.borrow().clone());
 
-                        gui_state_controller::gui_controller::append_song_to_queue(
-                            song_.borrow().clone(),
-                        );
+                        let mut gui_set_song = song_.borrow().clone();
+                        gui_set_song.index_in_play_queue = Some(apnd_idx);
+
+                        gui_state_controller::gui_controller::append_song_to_queue(gui_set_song);
                     });
                     insert_next_but.set_callback(move |_| {
                         println!("[Debug/PopupWindow] Inserted \"{song_name}\" to playqueue");
-                        play_queue_handler::insert_song_into_playqueue(song__.borrow().clone());
-                        gui_state_controller::gui_controller::insert_song_to_queue(
-                            song__.borrow().clone(),
-                        );
+                        let insert_idx =
+                            play_queue_handler::insert_song_into_playqueue(song__.borrow().clone());
+                        let mut gui_add_song = song__.borrow().clone();
+                        gui_add_song.index_in_play_queue = Some(insert_idx);
+                        gui_state_controller::gui_controller::insert_song_to_queue(gui_add_song);
                     });
                     add_to_playlist.set_callback(move |_| {
                         println!("[Debug/PopupWindow] add to playlist pressed");
@@ -410,9 +413,6 @@ pub mod gui_resources {
 
                     play_now_but.set_callback(move |_| {
                         println!("[Debug/PopupWindow] play now pressed");
-                        let pqs_idx = song__.borrow_mut().index_in_play_queue.clone();
-                        print!("pqs_idx = ");
-                        dbg!(pqs_idx);
                         play_queue_handler::play_song_instant(
                             song__
                                 .borrow()
