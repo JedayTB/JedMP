@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+discord-presence = "2.1.0"
 fltk = "^1.5" 
 fltk-theme = "0.7.9"
 rodio = "0.20.1"

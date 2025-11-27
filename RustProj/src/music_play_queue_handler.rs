@@ -101,11 +101,7 @@ pub mod play_queue_handler {
         let mut new_pqs = pq_song.clone();
         new_pqs.index_in_play_queue = Some(new_idx);
         println!("[Debug/MusicPlayQueueHandler/append_to_playqueue] idx updated to {new_idx}");
-        let nn = new_pqs.index_in_play_queue;
-        print!("New val");
-        dbg!(nn);
         PLAY_QUEUES.write().unwrap().push(new_pqs.clone());
-        dbg!(&PLAY_QUEUES.read().unwrap());
         return new_idx;
     }
     pub fn remove_from_playqueue(index: usize) {

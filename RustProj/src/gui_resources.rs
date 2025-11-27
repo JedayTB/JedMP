@@ -112,7 +112,7 @@ pub mod gui_resources {
                     let mut i = 0;
 
                     let f_name = _f.label();
-                    println!("[DEBUG]\t{f_name} Frame Pressed");
+                    println!("[DEBUG/ArtistFrame]\t\"{f_name}\" Frame Pressed");
                     // All pressed.. show all
                     // NOTE:
                     // Do similar logic for 'Unknown Artist'

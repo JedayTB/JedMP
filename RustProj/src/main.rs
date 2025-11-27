@@ -2,6 +2,7 @@
 #![allow(non_snake_case)]
 
 pub mod colors_handler;
+pub mod discord_presence_handler;
 pub mod gui_resources;
 pub mod gui_state_controller;
 pub mod music_cache_handler;
@@ -11,15 +12,14 @@ pub mod playlist_handler;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::process::abort;
-
-use crate::gui_state_controller::gui_controller;
 
 fn main() {
     // Mostly for debugging purposes
     handle_cmd_args();
     // Handle if JedMPDir exists
     handle_jedmp_directory();
+
+    discord_presence_handler::discord_presence::example();
 
     // Load music_cache file if exists, create it
     music_cache_handler::music_file_handler::try_load_cached_music();
@@ -30,8 +30,9 @@ fn main() {
 
     // Most things happen in gui_controller.
     // Just to keep GUI Events and logic close, otherwise it's a pain.
-    gui_controller::open_window();
+    gui_state_controller::gui_controller::open_window();
 }
+
 fn handle_cmd_args() {
     // CMD Args handling
     let args: Vec<String> = env::args().collect();
@@ -43,7 +44,8 @@ fn handle_cmd_args() {
                 -rp\tRemove all playlists
                 -rm\tRemove jedmp's music_cache
                 -rc\tRemove jedmp's colorrc");
-            abort();
+            // Exit gracefully
+            std::process::exit(0);
         } else if cmd_args == "ra" {
             // Redo first init logic here
             println!("Argument ra found, removing ~/.jedmp for testing.");

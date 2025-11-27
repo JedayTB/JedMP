@@ -2,6 +2,7 @@ pub mod gui_controller {
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
+    use crate::discord_presence_handler::discord_presence::DRPC_SENDER;
     use crate::get_jedmp_musiccache_path;
     use crate::get_jedmp_playlist_dir;
     use crate::gui_resources::gui_resources::ArtistFrame;
@@ -402,15 +403,26 @@ pub mod gui_controller {
         let s_name = pqs.song_title.clone();
         let pq_idx = *PLAY_QUEUE_INDEX.read().unwrap();
 
-        println!("[Debug] New song: {s_name}\tpq idx: {pq_idx}");
+        println!("[Debug/Gui_state_controller] Updated Sink song: {s_name}\tpq idx: {pq_idx}");
         let source = music_file_handler::load_path(&pqs.song_path);
 
         // Stops playback and clears all appened files
         SHARED_SINK.write().unwrap()[0].stop();
         SHARED_SINK.write().unwrap()[0].append(source);
         SHARED_SINK.write().unwrap()[0].play();
+        let pqs_title = pqs.song_title.clone();
+        let pqs_artist = pqs._song_artists.clone();
+        let drpc_send = format!("{pqs_title} - {pqs_artist}");
 
         update_current_playing_song(pqs.song_title, "00:00".to_string());
+        println!("[Debug] attempting to send drpc thread message");
+        // Quick little match because I am NOT aborting the app just because drpc BS
+        match DRPC_SENDER.write().unwrap()[0].send(drpc_send) {
+            Ok(_) => {} // set properly
+            Err(_) => {
+                println!("[ERROR]\tCouldn't send to DRPC thread. Not running?")
+            }
+        }
     }
     fn tab_close_cb(g: &mut impl GroupExt) {
         if app::callback_reason() == CallbackReason::Closed {
@@ -459,6 +471,7 @@ pub mod gui_controller {
             .index_in_play_queue
             .clone()
             .expect("Possible expect of a musiclib PlayQueueSong");
+
         update_sink(pq_song);
     }
     pub fn remove_song_from_playqueue(rm_index: usize) {
