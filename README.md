@@ -41,4 +41,14 @@ FLTK-RS - GUI\
 whoami - Getting information about user's system.\
 discord-presence - Discord presence
 
+Testing on a minimal debian 14 installation, I needed the following to start development on JedMP
+
+- rust (rustup command from above)
+- gcc
+- g++
+- libgtk-4-dev
+- libvlc-dev
+
+Hope this helps if you're having issues!
+
 Missing system packages will likely propogate an error. Reference lddResponse_so_dependencies (Literally ran ldd on the binary file.)
