@@ -1,6 +1,7 @@
 // Modules
 #![allow(non_snake_case)]
 
+pub mod audio_media_player;
 pub mod colors_handler;
 pub mod discord_presence_handler;
 pub mod gui_resources;
@@ -12,6 +13,9 @@ pub mod playlist_handler;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
+//use std::thread;
+//use std::time::Duration;
+//use crate::audio_media_player::AudioMediaPlayer::MpMessage;
 
 fn main() {
     // Mostly for debugging purposes
@@ -19,13 +23,22 @@ fn main() {
     // Handle if JedMPDir exists
     handle_jedmp_directory();
 
-    discord_presence_handler::discord_presence::example();
+    audio_media_player::AudioMediaPlayer::Start_music_player();
+    /*
+    audio_media_player::AudioMediaPlayer::MessagePlayerThread(
+        MpMessage::SetAndPlay,
+        "/home/jeday/Music/Drum N Base/BLKSMIITH - 「DIGITAL TWIN」/BLKSMIITH - 「DIGITAL TWIN」 - 07 SR20DET.flac".to_owned(),
+    );
+    //thread::sleep(Duration::from_secs(500));
+    */
+
+    //TODO:
+    //Add commannd arguments to disable / enable. Or a more complete config file somewhere
+    discord_presence_handler::discord_presence::start_discord_rpc();
 
     // Load music_cache file if exists, create it
     music_cache_handler::music_file_handler::try_load_cached_music();
-    // Same pattern as above
     colors_handler::color_handler::try_load_mastercolorrc();
-
     playlist_handler::playlist_handler::try_create_playlist_dir();
 
     // Most things happen in gui_controller.

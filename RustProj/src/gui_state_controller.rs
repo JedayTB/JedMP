@@ -1,4 +1,6 @@
 pub mod gui_controller {
+    use crate::audio_media_player::AudioMediaPlayer;
+    use crate::audio_media_player::AudioMediaPlayer::MpMessage;
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
@@ -25,7 +27,6 @@ pub mod gui_controller {
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
     use fltk_theme::{SchemeType, WidgetScheme};
-    use rodio::{OutputStream, Sink};
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc;
@@ -33,14 +34,14 @@ pub mod gui_controller {
     use std::sync::RwLock;
 
     // Shit way of making a global (Because can't do runtime functions for Pack)
+    // Yes, we're always accesing index [0]. Please tell me if theres a better way. Please.
     static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
     // Embrace the shit code. Another Global
-    static SHARED_SINK: RwLock<Vec<Sink>> = RwLock::new(Vec::new());
-    // Man..
     static ARTIST_VIEW_SCROLL: RwLock<Vec<Scroll>> = RwLock::new(Vec::new());
-
+    // Man..
     static CURRENT_PLAYING_SONG: RwLock<Vec<Frame>> = RwLock::new(Vec::new());
-    // These globals arent too bad.
+
+    // How this is MEANT to be used.
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
     static PLAYLIST_COUNT: RwLock<usize> = RwLock::new(0);
     static RELOAD_SINK: RwLock<bool> = RwLock::new(true);
@@ -232,15 +233,11 @@ pub mod gui_controller {
             _ => true,
         });
 
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let s = Sink::try_new(&stream_handle).unwrap();
-        SHARED_SINK.write().unwrap().push(s);
-
         last_song_button.set_callback(move |_| {
             // Goes back a song. Replays song if already at 0th index
             let play_ind = decrement_play_queue_index().unwrap_or(0);
             let next_song = PLAY_QUEUES.read().unwrap()[play_ind].clone();
-            update_sink(next_song);
+            update_song(next_song);
         });
         next_song_button.set_callback(move |_| {
             let play_ind = increment_play_queue_index();
@@ -250,30 +247,35 @@ pub mod gui_controller {
                 // (Future feature)
 
                 // We've reached end of play queue.
-
-                SHARED_SINK.write().unwrap()[0].stop();
+                AudioMediaPlayer::MessagePlayerThread(MpMessage::Pause, "".to_owned())
+                    .expect("Couldn't send message");
             } else {
                 let next_song = PLAY_QUEUES.read().unwrap()[play_ind.unwrap()].clone();
-                update_sink(next_song);
+                update_song(next_song);
             }
         });
 
         pause_song_button.set_callback(move |btn| {
             //FIXME:
             //Breaks when playqueue is empty.
-            if SHARED_SINK.read().unwrap()[0].empty() || *RELOAD_SINK.read().unwrap() == true {
+            if *RELOAD_SINK.read().unwrap() == true {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
                 println!("pq idx: {ind}");
                 let song = PLAY_QUEUES.read().unwrap()[*ind].clone();
-                update_sink(song);
+                update_song(song);
                 *RELOAD_SINK.write().unwrap() = false;
             }
 
-            if SHARED_SINK.read().unwrap()[0].is_paused() {
-                SHARED_SINK.write().unwrap()[0].play();
+            // Don't really like comparing strings, but I can't get the MusicPlayer paused value
+            // across threads easy.
+            if btn.label() == "Play" {
+                AudioMediaPlayer::MessagePlayerThread(MpMessage::Play, "".to_owned())
+                    .expect("Couldn't send message");
                 btn.set_label("Pause");
-            } else {
-                SHARED_SINK.write().unwrap()[0].pause();
+            } else if btn.label() == "Pause" {
+                // Else it's  paused.
+                AudioMediaPlayer::MessagePlayerThread(MpMessage::Pause, "".to_owned())
+                    .expect("Couldn't send message");
                 btn.set_label("Play");
             }
         });
@@ -399,17 +401,17 @@ pub mod gui_controller {
         app.run().unwrap();
     }
 
-    fn update_sink(pqs: PlayQueueSong) {
+    fn update_song(pqs: PlayQueueSong) {
         let s_name = pqs.song_title.clone();
         let pq_idx = *PLAY_QUEUE_INDEX.read().unwrap();
 
         println!("[Debug/Gui_state_controller] Updated Sink song: {s_name}\tpq idx: {pq_idx}");
-        let source = music_file_handler::load_path(&pqs.song_path);
 
         // Stops playback and clears all appened files
-        SHARED_SINK.write().unwrap()[0].stop();
-        SHARED_SINK.write().unwrap()[0].append(source);
-        SHARED_SINK.write().unwrap()[0].play();
+        let data = pqs.song_path.clone();
+        AudioMediaPlayer::MessagePlayerThread(MpMessage::SetAndPlay, data)
+            .expect("Couldn't send message");
+
         let pqs_title = pqs.song_title.clone();
         let pqs_artist = pqs._song_artists.clone();
         let drpc_send = format!("{pqs_title} - {pqs_artist}");
@@ -472,7 +474,7 @@ pub mod gui_controller {
             .clone()
             .expect("Possible expect of a musiclib PlayQueueSong");
 
-        update_sink(pq_song);
+        update_song(pq_song);
     }
     pub fn remove_song_from_playqueue(rm_index: usize) {
         SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].remove_by_index(rm_index as i32);

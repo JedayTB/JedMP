@@ -6,9 +6,8 @@ edition = "2024"
 [dependencies]
 discord-presence = "2.1.0"
 fltk = "^1.5" 
-fltk-theme = "0.7.9"
-rodio = "0.20.1"
-taglib = "1.0.0"
+fltk-theme =  "0.7.9"
+vlc-rs = "0.3.0"
 whoami = "1.6.0"
 
 

@@ -3,14 +3,13 @@ I couldn't find a music player I liked on Linux. So,I decided to make an open so
 
 Tauon is also a competent music player. Though, if you're like me.. It crashes. Too often. I suppose that'd the drawback of using Python
 
-## TODO
-Most recent TODO update - 2025-11-27 17:51 EST
+JedMP Makes use of LibVLC! They are amazing. You may ask "Why not just use VLC then?," to that we say. Have you seen their UI? No shade, of course. It just doesn't have the ease of use I would like out of my Music player. It does it's job spectacularly, however. Just different goals.
 
-RODIO Supports - MP3, WAV, VORBIS, FLAC , MP4 and AAC (Disabled by default, only handle by symphonia)
+## TODO
+Most recent TODO update - 2025-11-29 20:00 EST
 
 TODO List:
 
-- Music playing that accepts almost all audio codecs
 - Current playing song
     - time updates
     - progress bar
@@ -18,17 +17,17 @@ TODO List:
     - album art somewhere
 - Library search that takes into account currently displayed artist
 - Library Shuffle
-
+- SVG assets for Last, Pause play and Next button
 
 ## Starting development
 
-First, of course: \
+First, of course: 
 ```
 git clone https://github.com/JedayTB/JedMP.git
 ```
 
 
-To Download rust do: \
+To Download rust do: 
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
@@ -37,21 +36,9 @@ This also downloads extra tools for development.
 
 ### Rust Crates Dependencies 
 
-Rodio - Music playing\
+LibVlc - Music Playing and Metadata parsing\
 FLTK-RS - GUI\
-taglib - Reading Music file metadata\
 whoami - Getting information about user's system.\
-discord-presence - Discord presence\
+discord-presence - Discord presence
 
-### Package Depedencies
-
-```
-linux-vdso && libtag_c && libasound && libX11 && libXinerama && libXcursor && 
-libXfixes && libfontconfig && libpango-1.0 && libgobject-2.0 && libcairo && 
-libpangocairo-1.0 && libgcc_s && libm && libc && libtag && libstdc++ && libxcb 
-&& libXext && libXrender && libfreetype && libexpat && libglib-2.0 && libgio-2.0
-&& libfribidi && libthai && libharfbuzz && libffi && libz && libpng16 && libxcb-render && 
-libxcb-shm && libpixman-1 && libpangoft2-1.0 && libXau && libXdmcp && libbz2 && libbrotlidec 
-&& libpcre2-8 && libgmodule-2.0 && libmount && libselinux && libdatrie &&  libgraphite2 && 
-libbsd && libbrotlicommon && libblkid && libmd
-```
+Missing system packages will likely propogate an error. Reference lddResponse_so_dependencies (Literally ran ldd on the binary file.)

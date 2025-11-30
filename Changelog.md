@@ -1,3 +1,14 @@
+# 2025-11-29 Change: >:3
+>:3
+.. From what *I* (Jeday) can remember since the last actualy change update I have added
+- Artist frames
+- Sort by artist in Library
+- playlist tabs
+- Adjusted menu
+- Discord rich presence
+- Migrate from Rodio and libtag to LibVLC
+- TONS of bug fixes.
+Will I be consistent more? Maybe after 1.0 release. Or If I get payed :welp:
 # 2025-11-16 Change :3
 :3
 # 2025-10-27 Change: Lots. Sometimes a homie just wants to put down his head and work

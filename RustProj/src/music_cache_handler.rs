@@ -1,28 +1,69 @@
 pub mod music_file_handler {
+    use std::collections::HashMap;
     use std::fs::File;
     use std::fs::{self, OpenOptions};
     use std::time::SystemTime;
 
+    use vlc::{Instance, Media};
+
     use crate::get_jedmp_musiccache_path;
     use crate::play_queue_song::PlayQueueSong;
-    use rodio::Decoder;
-    use std::io::{BufReader, Write};
+    use std::io::Write;
     use std::path::PathBuf;
 
-    pub fn load_path(path_to_song: &String) -> Decoder<BufReader<File>> {
-        let f = File::open(path_to_song);
-        let file = BufReader::new(f.unwrap());
-        let music_source = Decoder::new(file).expect("FILE WAS NOT: MP3, WAV, VORBIS OR FLAC.");
-        return music_source;
-    }
-
+    //TODO:
+    //Implement a way to decrease music cache file size.
+    //If the user's music is scattered across multiple directories, it's difficult
+    //But if it's mainly in ~/Music, we can insert /home/username/Music to save 17 bytes every song
+    //entry(If
+    //username is 5 characters long. Like mine is)
+    //usernname is "
     pub fn process_chosen_song_directory(dir_path: &str) {
         let cached_songs_path = &get_jedmp_musiccache_path();
-
+        let libvlc_instance = Instance::new().expect("Couldn't start instance.");
         let mut music_cache_file = OpenOptions::new()
             .append(true)
             .open(cached_songs_path)
             .expect("Couldn't open music_cache");
+        let SupportedFilesDict: HashMap<&str, bool> = HashMap::from([
+            ("mp1", true),
+            ("mp2", true),
+            ("mp3", true),
+            ("aac", true),
+            ("m4a", true),
+            ("m3u", true),
+            ("wav", true),
+            ("ogg", true),
+            ("opus", true),
+            ("ac3", true),
+            ("eac3", true),
+            ("mlp", true),
+            ("thd", true),
+            ("dts", true),
+            ("wma", true),
+            ("flac", true),
+            ("alac", true),
+            ("spx", true),
+            ("mpc", true),
+            ("aa3", true),
+            ("oma", true),
+            ("wv", true),
+            ("mod", true),
+            ("tta", true),
+            ("ape", true),
+            ("ra", true),
+            ("alaw", true),
+            ("ulaw", true),
+            ("amr", true),
+            ("mid", true),
+            ("midi", true),
+            ("lpcm", true),
+            ("adpcm", true),
+            ("qcp", true),
+            ("dv", true),
+            ("qdm", true),
+            ("mace", true),
+        ]);
 
         println!("----\t[Master] Starting processing benchmark\t----");
         let startNanoTime = SystemTime::now();
@@ -56,11 +97,21 @@ pub mod music_file_handler {
                     pathstr
                 );
 
-                scan_directory_to_cached_songs(&pathstr, &mut music_cache);
+                scan_directory_to_cached_songs(
+                    &pathstr,
+                    &mut music_cache,
+                    &SupportedFilesDict,
+                    &libvlc_instance,
+                );
             } else if pathb.is_file() {
                 //println!("[Master Dir] Writing {:?}", pathstr);
                 // Check it's one of our supported song types
-                process_song_to_vec(pathstr, &mut music_cache);
+                process_song_to_vec(
+                    pathstr,
+                    &mut music_cache,
+                    &SupportedFilesDict,
+                    &libvlc_instance,
+                );
             }
         }
 
@@ -73,7 +124,8 @@ pub mod music_file_handler {
         music_cache_file
             .flush()
             .expect("Byte's couldn't reach music_cache");
-
+        // Just to make sure.
+        drop(libvlc_instance);
         let elapsedTime = SystemTime::now()
             .duration_since(startNanoTime)
             .unwrap()
@@ -81,42 +133,42 @@ pub mod music_file_handler {
         println!("[Master] Finished Scanning for music.");
         println!("----\t[Debug] Benchmark for Music Directories Processing. Time:\t{elapsedTime}");
     }
-
-    fn process_song_to_vec(pathstr: String, music_cache_vec: &mut Vec<String>) {
-        let extension = pathstr.split(".").last().unwrap_or("").to_owned();
+    //TODO:
+    //Find out how to add compatibility for opus and m4a codecs
+    fn process_song_to_vec(
+        pathstr: String,
+        music_cache_vec: &mut Vec<String>,
+        supported_files: &HashMap<&str, bool>,
+        libvlcIst: &Instance,
+    ) {
+        let extension = pathstr.split(".").last().unwrap_or("");
         //println!("(Found extension) {:?}", extension);
 
-        if extension == "mp3" || extension == "flac" || extension == "wav" || extension == "vorbis"
-        {
-            let tF = taglib::File::new(&pathstr).expect("Coudln't open song file as taglib file");
+        match supported_files.get(extension) {
+            Some(_) => {
+                let media = Media::new_path(libvlcIst, &pathstr)
+                    .expect("Couldn't open song file as taglib file");
+                let album: String;
+                let artist: String;
+                let mut title: String;
 
-            let album = tF
-                .tag()
-                .unwrap()
-                .album()
-                .unwrap_or("".to_owned())
-                .to_owned();
-            let artist = tF
-                .tag()
-                .unwrap()
-                .artist()
-                .unwrap_or("".to_owned())
-                .to_owned();
-            let mut title: String = tF
-                .tag()
-                .unwrap()
-                .title()
-                .unwrap_or("".to_owned())
-                .to_owned();
-            if title == "" {
-                title = pathstr.split("/").last().unwrap().to_owned();
+                media.parse();
+                album = media.get_meta(vlc::Meta::Album).unwrap_or("".to_string());
+                artist = media.get_meta(vlc::Meta::Artist).unwrap_or("".to_string());
+                title = media.get_meta(vlc::Meta::Title).unwrap_or("".to_string());
+
+                if title == "" {
+                    title = pathstr.split("/").last().unwrap().to_owned();
+                }
+
+                let s = format!("{pathstr}\x00{title}\x00{album}\x00{artist}\n");
+                music_cache_vec.push(s);
             }
-            let s = format!("{pathstr}\x00{title}\x00{album}\x00{artist}\n");
-            music_cache_vec.push(s);
-        } else {
-            println!(
-                "[Debug] skipping {pathstr} - non acceptable file codec. Extension: {extension}"
-            );
+            None => {
+                println!(
+                    "[Debug] skipping {pathstr} - non acceptable file codec. Extension: {extension}"
+                );
+            }
         }
     }
     pub fn process_existing_song_to_string(song: PlayQueueSong) -> String {
@@ -127,7 +179,12 @@ pub mod music_file_handler {
         format!("{path}\x00{title}\x00{album}\x00{artist}\n")
     }
 
-    fn scan_directory_to_cached_songs(dir_path: &str, music_cache: &mut Vec<String>) {
+    fn scan_directory_to_cached_songs(
+        dir_path: &str,
+        music_cache: &mut Vec<String>,
+        supported_files: &HashMap<&str, bool>,
+        libvlcIst: &Instance,
+    ) {
         let pathsindir = fs::read_dir(dir_path).unwrap();
         let mut pathBuf = PathBuf::new();
         for path in pathsindir {
@@ -135,9 +192,9 @@ pub mod music_file_handler {
             pathBuf.push(&song_path);
 
             if pathBuf.is_dir() {
-                scan_directory_to_cached_songs(&song_path, music_cache);
+                scan_directory_to_cached_songs(&song_path, music_cache, supported_files, libvlcIst);
             } else {
-                process_song_to_vec(song_path, music_cache);
+                process_song_to_vec(song_path, music_cache, supported_files, libvlcIst);
             }
         }
     }

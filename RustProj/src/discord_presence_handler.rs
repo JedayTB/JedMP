@@ -21,7 +21,7 @@ pub mod discord_presence {
     }
 
     pub static DRPC_SENDER: RwLock<Vec<Sender<String>>> = RwLock::new(Vec::new());
-    pub fn example() {
+    pub fn start_discord_rpc() {
         let (tx, rx) = channel::<String>();
 
         DRPC_SENDER.write().unwrap().push(tx.to_owned());
@@ -29,7 +29,7 @@ pub mod discord_presence {
         thread::spawn(move || {
             println!("[Debug/DiscordPresence] Discord RPC test");
             // Get our main status message
-            let state_message = "Fuckin' hoes";
+            let state_message = "Idling.";
             let status_display = "JedMP";
             // Create the client
             let mut drpc = Client::new(1003450375732482138);
