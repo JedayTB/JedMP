@@ -12,7 +12,6 @@ pub mod gui_resources {
     use crate::play_queue_song::PlayQueueSong;
     use crate::playlist_handler;
     use crate::playlist_handler::playlist_handler::{add_song_to_playlst, get_playlists_names};
-    use fltk::frame::Frame;
     use fltk::group::{Group, Scroll};
     use fltk::widget_extends;
 
@@ -26,7 +25,9 @@ pub mod gui_resources {
         BASE_WINDOW_HEIGHT, BASE_WINDOW_WIDTH, GENERAL_X_PAD, GENERAL_Y_PAD,
         make_artist_view_frames, make_library_list_frames,
     };
-    use crate::music_play_queue_handler::play_queue_handler::{self, MUSIC_LIBRARIES};
+    use crate::music_play_queue_handler::play_queue_handler::{
+        self, MUSIC_LIBRARIES, open_and_set_main_lib,
+    };
 
     use fltk::enums::FrameType;
 
@@ -47,13 +48,17 @@ pub mod gui_resources {
             pl_index: usize,
             make_tab: bool,
         ) -> Self {
-            let playlist_file =
-                File::open(&path_to_playlist).expect("Couldn't read cached_songs file.");
+            if playlist_name == "All" {
+                open_and_set_main_lib();
+            } else {
+                let playlist_file =
+                    File::open(&path_to_playlist).expect("Couldn't read cached_songs file.");
 
-            let bufR = BufReader::new(playlist_file);
-            let lines = bufR.lines();
+                let bufR = BufReader::new(playlist_file);
+                let lines = bufR.lines();
 
-            play_queue_handler::open_music_lib(lines);
+                play_queue_handler::open_music_lib(lines);
+            }
 
             let mut tab_group = Group::default()
                 .with_label(&playlist_name)
@@ -61,8 +66,8 @@ pub mod gui_resources {
 
             tab_group.set_color(get_jedmp_color(JedMP_Colors::Background_color));
 
-            let library_list_width = 500;
-            let library_list_height = 450;
+            let library_list_width = 1000;
+            let library_list_height = 900;
 
             let library_list_pos_x = GENERAL_X_PAD;
             let library_list_pos_y = 0;
@@ -88,22 +93,35 @@ pub mod gui_resources {
         }
     }
 
-    //
-    //
-    //
     pub struct ArtistFrame {
-        artist_frame: Frame,
+        artist_frame: Flex,
     }
 
-    widget_extends!(ArtistFrame, Frame, artist_frame);
+    widget_extends!(ArtistFrame, Flex, artist_frame);
 
     impl ArtistFrame {
         pub fn new(
             artist_frame_name: String,
             library_in_tab_frame_rfc: Rc<RefCell<TabLibrary>>,
+            w: i32,
+            h: i32,
         ) -> Self {
-            let mut artist_frame = Frame::default();
+            let mut artist_frame = Flex::default().with_size(w, h).row();
+            artist_frame.make_resizable(true);
+            artist_frame.set_align(Align::Center);
+            artist_frame.set_frame(FrameType::NoBox);
 
+            let mut _song_name_text = text::TextDisplay::default();
+            _song_name_text.set_frame(FrameType::NoBox);
+            let mut txt_buffer = TextBuffer::default();
+
+            txt_buffer.set_text(&artist_frame_name.clone());
+            _song_name_text.super_handle_first(false);
+            _song_name_text.set_buffer(txt_buffer);
+            _song_name_text.set_color(get_jedmp_color(JedMP_Colors::Song_iden_bg_color));
+            _song_name_text.set_text_color(get_jedmp_color(JedMP_Colors::Text_color));
+
+            artist_frame.end();
             artist_frame.handle(move |_f, e| match e {
                 Event::Push => {
                     let lbf = library_in_tab_frame_rfc.borrow_mut();

@@ -17,6 +17,7 @@ TODO List:
     - album art somewhere
 - Library search that takes into account currently displayed artist
 - Library Shuffle
+- Non program blocking music scan + animation
 - SVG assets for Last, Pause play and Next button
 
 ## Starting development

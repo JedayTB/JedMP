@@ -13,9 +13,13 @@ pub mod playlist_handler;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-//use std::thread;
-//use std::time::Duration;
-//use crate::audio_media_player::AudioMediaPlayer::MpMessage;
+use std::time::Duration;
+
+// There are a few threads in this application (AudioMediaPlayer, GUI Animation), this global will
+// keep their polling synced
+// ms for frame
+// ms_interval = 1000 (miliseconds in second) / frames
+pub static THREAD_POLL_RATE: Duration = Duration::from_millis(1000 / 144);
 
 fn main() {
     // Mostly for debugging purposes
@@ -24,23 +28,16 @@ fn main() {
     handle_jedmp_directory();
 
     audio_media_player::AudioMediaPlayer::Start_music_player();
-    /*
-    audio_media_player::AudioMediaPlayer::MessagePlayerThread(
-        MpMessage::SetAndPlay,
-        "/home/jeday/Music/Drum N Base/BLKSMIITH - 「DIGITAL TWIN」/BLKSMIITH - 「DIGITAL TWIN」 - 07 SR20DET.flac".to_owned(),
-    );
-    //thread::sleep(Duration::from_secs(500));
-    */
-
     //TODO:
     //Add commannd arguments to disable / enable. Or a more complete config file somewhere
     discord_presence_handler::discord_presence::start_discord_rpc();
 
     // Load music_cache file if exists, create it
     music_cache_handler::music_file_handler::try_load_cached_music();
-    colors_handler::color_handler::try_load_mastercolorrc();
     playlist_handler::playlist_handler::try_create_playlist_dir();
+    //music_play_queue_handler::play_queue_handler::open_music_lib();
 
+    colors_handler::color_handler::try_load_mastercolorrc();
     // Most things happen in gui_controller.
     // Just to keep GUI Events and logic close, otherwise it's a pain.
     gui_state_controller::gui_controller::open_window();

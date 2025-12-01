@@ -1,6 +1,10 @@
 pub mod gui_controller {
+    use crate::THREAD_POLL_RATE;
     use crate::audio_media_player::AudioMediaPlayer;
+    use crate::audio_media_player::AudioMediaPlayer::CURRENTSONGTIME;
+    use crate::audio_media_player::AudioMediaPlayer::MessagePlayerThread;
     use crate::audio_media_player::AudioMediaPlayer::MpMessage;
+    use crate::audio_media_player::AudioMediaPlayer::STARTUPPERSISTENTVOLUME;
     use crate::colors_handler::color_handler::COLOR_DICTIONARY;
     use crate::colors_handler::color_handler::JedMP_Colors;
     use crate::colors_handler::color_handler::get_jedmp_color;
@@ -15,6 +19,7 @@ pub mod gui_controller {
     use crate::gui_resources::gui_resources::SongIdentifierType;
     use crate::gui_resources::gui_resources::TabLibrary;
     use crate::music_cache_handler::music_file_handler;
+    use crate::music_play_queue_handler;
     use crate::music_play_queue_handler::play_queue_handler::MUSIC_LIBRARIES;
     use crate::music_play_queue_handler::play_queue_handler::{
         PLAY_QUEUE_INDEX, PLAY_QUEUES, decrement_play_queue_index, increment_play_queue_index,
@@ -23,6 +28,7 @@ pub mod gui_controller {
     use crate::playlist_handler::playlist_handler::get_playlists_names;
     use fltk::dialog;
     use fltk::frame::Frame;
+    use fltk::valuator::HorNiceSlider;
     use fltk::widget::Widget;
     use fltk::{app, enums::*, group::*, prelude::*, window::Window};
 
@@ -32,16 +38,23 @@ pub mod gui_controller {
     use std::rc;
     use std::rc::Rc;
     use std::sync::RwLock;
+    use std::thread;
 
     // Shit way of making a global (Because can't do runtime functions for Pack)
     // Yes, we're always accesing index [0]. Please tell me if theres a better way. Please.
-    static SHARED_PLAY_QUEUE_GUI: RwLock<Vec<Pack>> = RwLock::new(Vec::new());
-    // Embrace the shit code. Another Global
-    static ARTIST_VIEW_SCROLL: RwLock<Vec<Scroll>> = RwLock::new(Vec::new());
-    // Man..
-    static CURRENT_PLAYING_SONG: RwLock<Vec<Frame>> = RwLock::new(Vec::new());
+    //TODO:
+    //Use the widget id pattern
+    //ex: let cur_song_frame : Frame = app::widget_from_id(cur_song_id);
 
-    // How this is MEANT to be used.
+    static PLAY_QUEUE_BOX_ID: &str = "shared_play_queue";
+    // Embrace the shit code. Another Global
+    static ARTIST_VIEW_SCROLL_ID: &str = "artist_view_scroll";
+
+    // Don't think the actual string for the id's matters too much.
+    static CURRENT_PLAYING_SONG_FRAME_ID: &str = "cur_playing_song_frame";
+    static VOLUME_SLIDER_ID: &str = "volume_slider";
+    static CURRENT_SONG_TIME_ID: &str = "song_time";
+
     static CURRENT_PLAYLIST_INDEX: RwLock<usize> = RwLock::new(0);
     static PLAYLIST_COUNT: RwLock<usize> = RwLock::new(0);
     static RELOAD_SINK: RwLock<bool> = RwLock::new(true);
@@ -49,11 +62,12 @@ pub mod gui_controller {
     static IN_PLAY_QUEUE_BOX_HEIGHT: i32 = 30;
     static IN_PLAY_QUEUE_BOX_WIDTH: i32 = 100;
 
-    pub static BASE_WINDOW_WIDTH: i32 = 896;
-    pub static BASE_WINDOW_HEIGHT: i32 = 504;
+    // Not 1920 x 1080 because that'll initialize full screen
+    pub static BASE_WINDOW_WIDTH: i32 = 1729;
+    pub static BASE_WINDOW_HEIGHT: i32 = 1008;
     pub static GENERAL_X_PAD: i32 = 10;
     pub static GENERAL_Y_PAD: i32 = 10;
-    pub static MENU_ARTISTVIEW_PAD: i32 = 100;
+    pub static MENU_ARTISTVIEW_PAD: i32 = 200;
 
     //TODO:
     //Create custom frame rendering for Tabs using Tabs bg color.
@@ -75,11 +89,12 @@ pub mod gui_controller {
 
         //FIXME:
         //Do something to make this user cofigurable
+        println!("[FIXME] USING SYSTEM SPECIFIC FONT");
         let font = Font::load_font("/home/jeday/.fonts/JetBrainsMono-Medium.ttf").unwrap();
         Font::set_font(Font::Helvetica, &font);
 
-        let menu_button_width = 30;
-        let menu_button_height = 10;
+        let menu_button_width = 100;
+        let menu_button_height = 30;
 
         let mut menu_button = JButton::new()
             .with_size(menu_button_width, menu_button_height)
@@ -92,31 +107,70 @@ pub mod gui_controller {
         let button_box_pos_x =
             (BASE_WINDOW_WIDTH / 2) - (button_box_width / 2) + MENU_ARTISTVIEW_PAD;
 
-        let button_box = Flex::default()
+        let mut button_box = Flex::default()
             .with_size(button_box_width - MENU_ARTISTVIEW_PAD, button_box_height)
             .with_pos(button_box_pos_x, button_box_pos_y)
             .row();
+        button_box.set_pad(10);
 
         let mut last_song_button = JButton::new().with_label("<");
         let mut pause_song_button = JButton::new().with_label("Pause");
         let mut next_song_button = JButton::new().with_label(">");
 
         button_box.end();
+        let above_button_box_y = button_box_pos_y - button_box_height - 5;
 
-        let mut song_info_box = Flex::default()
-            .with_size(button_box_width, button_box_height)
-            .with_pos(button_box_pos_x, button_box_pos_y - button_box_height - 5);
+        // Song control widget's definition  ////////////
+        //ISSUE:
+        //Not aligned properly
+        let mut current_playing_song_frame = Frame::default()
+            .with_label("")
+            .with_id(CURRENT_PLAYING_SONG_FRAME_ID)
+            .with_size(button_box_width / 5, button_box_height / 2)
+            .with_pos(
+                button_box_pos_x + button_box_width / 2 - (button_box_width / 5),
+                above_button_box_y,
+            )
+            .with_align(Align::Left);
 
-        let current_playing_song_frame = Frame::default().with_label("Current song here\t\t00:00");
+        current_playing_song_frame.set_label_color(get_jedmp_color(JedMP_Colors::Text_color));
 
-        CURRENT_PLAYING_SONG
-            .write()
-            .unwrap()
-            .push(current_playing_song_frame);
+        let mut volume_slider: HorNiceSlider = HorNiceSlider::default()
+            .with_size(button_box_width / 5, 20)
+            .with_pos(
+                button_box_pos_x + button_box_width / 2 + button_box_width / 5 - 50,
+                above_button_box_y - button_box_height / 10,
+            )
+            .with_id(VOLUME_SLIDER_ID);
+        volume_slider.set_range(0.0, 100.0);
+        volume_slider.set_label_color(get_jedmp_color(JedMP_Colors::Text_color));
 
-        song_info_box.set_frame(FrameType::FlatBox);
-        song_info_box.end();
-        let row_width = BASE_WINDOW_WIDTH - menu_button_width - 350;
+        volume_slider.set_value(*STARTUPPERSISTENTVOLUME.read().unwrap() as f64);
+
+        volume_slider.set_callback(|vs| {
+            // Lags when user slides because of the tx, rx :: channel pattern.
+            // Oh well. Click is instant
+            let sv = vs.value();
+            let v_int = sv as i32;
+            let s_str = format!("{v_int}");
+            vs.set_label(&s_str);
+            MessagePlayerThread(MpMessage::VolumeAdjust, s_str).expect("Message couldn't be sent.");
+        });
+
+        volume_slider.set_slider_frame(FrameType::NoBox);
+        volume_slider.set_frame(FrameType::NoBox);
+
+        let mut current_song_time = Frame::default()
+            .with_label("000:000")
+            .with_id(CURRENT_SONG_TIME_ID)
+            .with_size(button_box_width / 5, button_box_height / 2)
+            .with_pos(
+                button_box_pos_x + button_box_width / 2 - (button_box_width / 5) + 100,
+                above_button_box_y,
+            );
+        current_song_time.set_label_color(get_jedmp_color(JedMP_Colors::Text_color));
+        //////////////////////////
+        let row_width = BASE_WINDOW_WIDTH - menu_button_width - 450;
         let row_height = BASE_WINDOW_HEIGHT - (BASE_WINDOW_HEIGHT / 6) - 10;
 
         let mut row = Flex::default()
@@ -133,8 +187,10 @@ pub mod gui_controller {
         let shared_tabs = rc::Rc::new(RefCell::new(tabs.clone()));
 
         let main_tab = PlaylistTab::new(get_jedmp_musiccache_path(), "All".to_owned(), 0, false);
-        let mtab_lib = rc::Rc::new(RefCell::new(main_tab.library));
 
+        println!("mtab_ch: {0}", main_tab.library.children());
+
+        let mtab_lib = rc::Rc::new(RefCell::new(main_tab.library));
         tabs.end();
         tabs.auto_layout();
 
@@ -142,23 +198,23 @@ pub mod gui_controller {
 
         let artist_view_scroll = Scroll::default()
             .with_size(MENU_ARTISTVIEW_PAD, BASE_WINDOW_HEIGHT - menu_button_height)
-            .with_pos(0, 15);
+            .with_pos(0, menu_button_height + 10)
+            .with_id(ARTIST_VIEW_SCROLL_ID);
 
         artist_view_scroll.end();
 
-        ARTIST_VIEW_SCROLL.write().unwrap().push(artist_view_scroll);
-
         make_artist_view_frames(mtab_lib.clone(), 0 as usize);
 
-        let play_queue_box_width = 250;
-        let play_queue_box_height = 300;
+        let play_queue_box_width = 300;
+        let play_queue_box_height = row_height - GENERAL_Y_PAD * 2;
 
         let mut main_playqueue = Scroll::default()
             .with_size(play_queue_box_width, play_queue_box_height)
             .with_pos(
                 BASE_WINDOW_WIDTH - play_queue_box_width - GENERAL_X_PAD,
                 GENERAL_Y_PAD * 2,
-            );
+            )
+            .with_id(PLAY_QUEUE_BOX_ID);
         main_playqueue.set_color(get_jedmp_color(JedMP_Colors::Background_color));
         main_playqueue.set_frame(FrameType::UpBox);
 
@@ -168,7 +224,6 @@ pub mod gui_controller {
         main_playqueue.add(&mpq_pack);
         main_playqueue.end();
 
-        SHARED_PLAY_QUEUE_GUI.write().unwrap().push(mpq_pack);
         wind.end();
         wind.make_resizable(true);
         wind.show();
@@ -201,7 +256,7 @@ pub mod gui_controller {
                     while i < tabs_children {
                         let c = tb.child(i).expect("No widgets?");
                         let p = c.label();
-                        println!("{p}");
+                        dbg!(p);
                         if sel_pl.is_same(&c) {
                             //println!("clicked playlist was {p}, idx is {i}");
                             *RELOAD_SINK.write().unwrap() = true;
@@ -210,7 +265,8 @@ pub mod gui_controller {
 
                         i += 1;
                     }
-                    let art_view = &ARTIST_VIEW_SCROLL.write().unwrap()[0];
+                    let art_view: Scroll = app::widget_from_id(ARTIST_VIEW_SCROLL_ID)
+                        .expect("Artist view scroll not set with id");
                     let mut k = 0;
                     while k < art_view.children() {
                         let mut c = art_view
@@ -227,6 +283,7 @@ pub mod gui_controller {
 
                     *CURRENT_PLAYLIST_INDEX.write().unwrap() = i as usize;
                 }
+                app::awake();
                 app::redraw();
                 true
             }
@@ -255,28 +312,31 @@ pub mod gui_controller {
             }
         });
 
+        //TODO:
+        //Make sure this works well. Set a popup that dissapears after a certain time if the
+        //playqueue is empty for user feedback
         pause_song_button.set_callback(move |btn| {
-            //FIXME:
-            //Breaks when playqueue is empty.
-            if *RELOAD_SINK.read().unwrap() == true {
+            if *RELOAD_SINK.read().unwrap() == true
+                && PLAY_QUEUES.read().unwrap().is_empty() == false
+            {
                 let ind = PLAY_QUEUE_INDEX.read().unwrap();
                 println!("pq idx: {ind}");
                 let song = PLAY_QUEUES.read().unwrap()[*ind].clone();
                 update_song(song);
                 *RELOAD_SINK.write().unwrap() = false;
-            }
 
-            // Don't really like comparing strings, but I can't get the MusicPlayer paused value
-            // across threads easy.
-            if btn.label() == "Play" {
-                AudioMediaPlayer::MessagePlayerThread(MpMessage::Play, "".to_owned())
-                    .expect("Couldn't send message");
-                btn.set_label("Pause");
-            } else if btn.label() == "Pause" {
-                // Else it's  paused.
-                AudioMediaPlayer::MessagePlayerThread(MpMessage::Pause, "".to_owned())
-                    .expect("Couldn't send message");
-                btn.set_label("Play");
+                // Don't really like comparing strings, but I can't get the MusicPlayer paused value
+                // across threads easy.
+                if btn.label() == "Play" {
+                    AudioMediaPlayer::MessagePlayerThread(MpMessage::Play, "".to_owned())
+                        .expect("Couldn't send message");
+                    btn.set_label("Pause");
+                } else if btn.label() == "Pause" {
+                    // Else it's  paused.
+                    AudioMediaPlayer::MessagePlayerThread(MpMessage::Pause, "".to_owned())
+                        .expect("Couldn't send message");
+                    btn.set_label("Play");
+                }
             }
         });
 
@@ -320,9 +380,11 @@ pub mod gui_controller {
                                 .expect("Directory doesn't have a string name?..");
 
                             music_file_handler::process_chosen_song_directory(strname);
-                            music_file_handler::load_cached_songs();
-
+                            music_play_queue_handler::play_queue_handler::open_and_set_main_lib();
                             make_library_list_frames(&mut *sh_inner_inner.borrow_mut(), 0);
+                            make_artist_view_frames(sh_inner_inner.clone(), 0);
+                            app::awake();
+                            app::redraw();
                         }
                         dialog::NativeFileChooserAction::Cancelled => {
                             println!("Directory Pick cancelled");
@@ -398,6 +460,27 @@ pub mod gui_controller {
         });
         */
 
+        //////////////////////
+        // Animation thread //
+        //////////////////////
+        thread::spawn(move || {
+            loop {
+                // Song time set
+                let mut current_song_time_f: Frame =
+                    app::widget_from_id(CURRENT_SONG_TIME_ID).expect("ID not set to a widget");
+
+                let stimemilis = *CURRENTSONGTIME.read().unwrap();
+
+                let seconds = stimemilis / 1000;
+                let milis_twoplaces = stimemilis % 100;
+                let set_str = format!("{0}:{1:.1}", seconds, milis_twoplaces);
+                current_song_time_f.set_label(&set_str);
+
+                current_song_time_f.redraw();
+                thread::sleep(THREAD_POLL_RATE);
+                app::awake();
+            }
+        });
         app.run().unwrap();
     }
 
@@ -416,7 +499,7 @@ pub mod gui_controller {
         let pqs_artist = pqs._song_artists.clone();
         let drpc_send = format!("{pqs_title} - {pqs_artist}");
 
-        update_current_playing_song(pqs.song_title, "00:00".to_string());
+        update_current_playing_song(pqs.song_title);
         println!("[Debug] attempting to send drpc thread message");
         // Quick little match because I am NOT aborting the app just because drpc BS
         match DRPC_SENDER.write().unwrap()[0].send(drpc_send) {
@@ -433,12 +516,15 @@ pub mod gui_controller {
             app::redraw();
         }
     }
-    fn update_current_playing_song(s_name: String, s_time: String) {
-        let set_s = format!("{s_name}\t\t{s_time}");
-        CURRENT_PLAYING_SONG.write().unwrap()[0].set_label(&set_s);
+    fn update_current_playing_song(s_name: String) {
+        let set_s = format!("{s_name}");
+        let mut cur_song: Frame = app::widget_from_id(CURRENT_PLAYING_SONG_FRAME_ID).unwrap();
+        cur_song.set_label(&set_s);
     }
 
     pub fn append_song_to_queue(pq_song: PlayQueueSong) {
+        let mut play_queue_box: Scroll =
+            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,
             IN_PLAY_QUEUE_BOX_HEIGHT,
@@ -448,10 +534,12 @@ pub mod gui_controller {
             pq_song.to_owned(),
             Some(PLAY_QUEUES.read().unwrap().len() - 1),
         );
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].add(&*song_iden);
+        play_queue_box.add(&*song_iden);
         app::redraw();
     }
     pub fn insert_song_to_queue(pq_song: PlayQueueSong) {
+        let mut play_queue_box: Scroll =
+            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
         let current_index = *PLAY_QUEUE_INDEX.read().unwrap();
 
         let song_iden = SongIdentifier::new(
@@ -464,7 +552,7 @@ pub mod gui_controller {
             Some(PLAY_QUEUES.read().unwrap().len() - 1),
         );
 
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].insert(&*song_iden, current_index as i32);
+        play_queue_box.insert(&*song_iden, current_index as i32);
         app::redraw();
     }
 
@@ -477,7 +565,9 @@ pub mod gui_controller {
         update_song(pq_song);
     }
     pub fn remove_song_from_playqueue(rm_index: usize) {
-        SHARED_PLAY_QUEUE_GUI.write().unwrap()[0].remove_by_index(rm_index as i32);
+        let mut play_queue_box: Pack =
+            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
+        play_queue_box.remove_by_index(rm_index as i32);
     }
     pub fn make_library_list_frames(tablib: &mut TabLibrary, which_pq: usize) {
         tablib.scroll_pack.clear();
@@ -507,15 +597,20 @@ pub mod gui_controller {
         let artist_frame_width = MENU_ARTISTVIEW_PAD;
         let artist_frame_height = 50;
 
-        let p_width = ARTIST_VIEW_SCROLL.read().unwrap()[0].w();
-        let p_height = ARTIST_VIEW_SCROLL.read().unwrap()[0].h();
+        let mut artist_view_scroll: Scroll =
+            app::widget_from_id(ARTIST_VIEW_SCROLL_ID).expect("Artist view scroll id not set");
 
+        let p_width = artist_view_scroll.w();
+        let p_height = artist_view_scroll.h();
         let mut art_pack = Pack::default().with_size(p_width, p_height);
-        art_pack.set_align(Align::Left);
+        art_pack.set_align(Align::Center);
 
-        let misc_artist_frame = ArtistFrame::new("All".to_owned(), tablib_link.clone())
-            .with_size(artist_frame_width, artist_frame_height)
-            .with_label("All");
+        let misc_artist_frame = ArtistFrame::new(
+            "All".to_owned(),
+            tablib_link.clone(),
+            artist_frame_width,
+            artist_frame_height,
+        );
 
         art_pack.add(&*misc_artist_frame);
         art_hash.insert("".to_owned(), misc_artist_frame);
@@ -526,26 +621,28 @@ pub mod gui_controller {
             if art_hash.contains_key(&artist_name) == false {
                 // For song's without artist metadata
                 if artist_name == "".to_owned() {
-                    let mut artist_frame =
-                        ArtistFrame::new("Unnamed Artist".to_owned(), tablib_link.clone())
-                            .with_size(artist_frame_width, artist_frame_height)
-                            .with_label(&"Unnamed Artist");
-                    artist_frame.set_align(Align::Left);
+                    let artist_frame = ArtistFrame::new(
+                        "Unnamed Artist".to_owned(),
+                        tablib_link.clone(),
+                        artist_frame_width,
+                        artist_frame_height,
+                    );
                     art_pack.add(&*artist_frame);
                     art_hash.insert("Unnamed Artist".to_owned(), artist_frame);
                 } else {
-                    let mut artist_frame =
-                        ArtistFrame::new(artist_name.clone(), tablib_link.clone())
-                            .with_size(artist_frame_width, artist_frame_height)
-                            .with_label(&artist_name);
+                    let artist_frame = ArtistFrame::new(
+                        artist_name.clone(),
+                        tablib_link.clone(),
+                        artist_frame_width,
+                        artist_frame_height,
+                    );
 
-                    artist_frame.set_align(Align::Center);
                     art_pack.add(&*artist_frame);
                     art_hash.insert(artist_name, artist_frame);
                 }
             }
         }
         art_pack.end();
-        ARTIST_VIEW_SCROLL.write().unwrap()[0].add(&art_pack);
+        artist_view_scroll.add(&art_pack);
     }
 }

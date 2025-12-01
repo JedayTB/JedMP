@@ -5,7 +5,8 @@ pub mod AudioMediaPlayer {
     use std::sync::RwLock;
     use std::sync::mpsc::{SendError, channel};
     use std::sync::mpsc::{Sender, TryRecvError};
-    use std::time::Duration;
+
+    use crate::THREAD_POLL_RATE;
 
     static MUSIC_PLAYER_SENDER: RwLock<Vec<Sender<String>>> = RwLock::new(Vec::new());
 
@@ -16,6 +17,8 @@ pub mod AudioMediaPlayer {
         Seek,
         VolumeAdjust,
     }
+    pub static STARTUPPERSISTENTVOLUME: RwLock<i32> = RwLock::new(0);
+    pub static CURRENTSONGTIME: RwLock<i64> = RwLock::new(0);
 
     pub fn Start_music_player() {
         let (tx, rx) = channel::<String>();
@@ -28,8 +31,28 @@ pub mod AudioMediaPlayer {
             //instance.set_app_id(id, version, icon);
             //TODO: Set icon when we have art.
             let player = MediaPlayer::new(&instance).unwrap();
+            let spv = player.get_volume();
+            *STARTUPPERSISTENTVOLUME.write().unwrap() = spv;
+
             loop {
                 //print!("\033[2K\r awaiting signal");
+
+                let s_time = player.get_time();
+
+                match s_time {
+                    Some(t) => {
+                        *CURRENTSONGTIME.write().unwrap() = t;
+                    }
+
+                    None => {
+                        let st = *CURRENTSONGTIME.read().unwrap();
+                        // Just so we don't set it every update tick.
+                        // idk if this really matters. Oh well.
+                        if st != 0 {
+                            *CURRENTSONGTIME.write().unwrap() = 0;
+                        }
+                    }
+                }
 
                 // Rust thread events builtins
                 match rx.try_recv() {
@@ -37,7 +60,7 @@ pub mod AudioMediaPlayer {
                         let vc = val.clone();
                         println!("[Debug/AudioMediaPlayer] recieved message {vc}");
                         let msg_args: Vec<&str> = vc.split("\x00").collect();
-                        dbg!(&msg_args);
+                        //dbg!(&msg_args);
 
                         let msg = msg_args[0];
                         let data = msg_args[1];
@@ -54,7 +77,9 @@ pub mod AudioMediaPlayer {
                             player.set_time(s_time);
                         } else if msg == "VolumeAdjust" {
                             let vol: i32 = data.parse::<i32>().expect("Couldn't parse");
+
                             player.set_volume(vol).expect("Couldn't set volume.");
+                            //println!("[Debug/AudioMediaPlayer] Volume set");
                         } else if msg == "Play" {
                             player.play().expect("couldn't play");
                         } else if msg == "Pause" {
@@ -70,7 +95,7 @@ pub mod AudioMediaPlayer {
                     }
                 }
 
-                thread::sleep(Duration::from_millis(16))
+                thread::sleep(THREAD_POLL_RATE)
             }
         });
     }

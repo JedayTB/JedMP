@@ -1,7 +1,9 @@
 pub mod play_queue_handler {
+    use crate::get_jedmp_musiccache_path;
     use crate::play_queue_song::PlayQueueSong;
 
     use std::fs::File;
+    use std::io::BufRead;
     use std::{io::BufReader, io::Lines, sync::RwLock};
 
     pub static PLAY_QUEUES: RwLock<Vec<PlayQueueSong>> = RwLock::new(Vec::new());
@@ -37,6 +39,39 @@ pub mod play_queue_handler {
         }
         PLAY_QUEUES.write().unwrap().clone_from(&tempPQ.clone());
     }
+    pub fn open_and_set_main_lib() {
+        let playlist_file =
+            File::open(get_jedmp_musiccache_path()).expect("Couldn't read cached_songs file.");
+
+        let bufR = BufReader::new(playlist_file);
+        let lines = bufR.lines();
+
+        let cfl_vec: Vec<String> = lines.collect::<Result<_, _>>().unwrap();
+
+        let mut tempPQ: Vec<PlayQueueSong> = Vec::new();
+        // Read necessary information
+
+        for line in cfl_vec {
+            let entry = line;
+
+            let entries: Vec<&str> = entry.split("\x00").collect();
+
+            let plq_song = PlayQueueSong::new(
+                entries[0].to_owned(),
+                entries[1].to_owned(),
+                entries[2].to_owned(),
+                entries[3].to_owned(),
+                None,
+            );
+            tempPQ.push(plq_song);
+        }
+        if MUSIC_LIBRARIES.read().unwrap().len() == 0 {
+            MUSIC_LIBRARIES.write().unwrap().push(tempPQ);
+        } else {
+            MUSIC_LIBRARIES.write().unwrap()[0].clear();
+            MUSIC_LIBRARIES.write().unwrap()[0].clone_from(&tempPQ);
+        }
+    }
     pub fn open_music_lib(music_lib_lines: Lines<BufReader<File>>) {
         let cfl_vec: Vec<String> = music_lib_lines.collect::<Result<_, _>>().unwrap();
 
@@ -55,7 +90,6 @@ pub mod play_queue_handler {
                 entries[3].to_owned(),
                 None,
             );
-
             tempPQ.push(plq_song);
         }
         MUSIC_LIBRARIES.write().unwrap().push(tempPQ.clone());
@@ -112,7 +146,7 @@ pub mod play_queue_handler {
         let pq_len = PLAY_QUEUES.read().unwrap().len();
         let inc_ind = pqi.checked_add(1).unwrap_or_default();
 
-        if inc_ind > pq_len {
+        if inc_ind >= pq_len {
             return None;
         } else {
             *pqi = inc_ind;

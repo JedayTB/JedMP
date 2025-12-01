@@ -209,7 +209,7 @@ pub mod music_file_handler {
             .expect("Smth went wrong checking if path exist")
             == false
         {
-            println!("Jed MP Folder does not exist. Creating and populating...");
+            println!("[Debug/music_cache_handler] JedMP music_cache does not exist. Creating...");
             File::create(&cachedfiles_path_str).unwrap();
             println!("[Debug/music_cache_handler] Created cachedmusic file");
         } else {
@@ -217,7 +217,7 @@ pub mod music_file_handler {
             load_cached_songs();
         }
     }
-
+    ///This function is redundant
     pub fn load_cached_songs() {
         let cached_songs_path = &get_jedmp_musiccache_path();
         let cached_music_file =
