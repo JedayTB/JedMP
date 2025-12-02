@@ -46,7 +46,9 @@ pub mod gui_controller {
     //Use the widget id pattern
     //ex: let cur_song_frame : Frame = app::widget_from_id(cur_song_id);
 
-    static PLAY_QUEUE_BOX_ID: &str = "shared_play_queue";
+    static PLAY_QUEUE_SCROLL_ID: &str = "shared_play_queue_scroll";
+
+    static PLAY_QUEUE_PACK_ID: &str = "shared_play_queue_pack";
     // Embrace the shit code. Another Global
     static ARTIST_VIEW_SCROLL_ID: &str = "artist_view_scroll";
 
@@ -214,11 +216,11 @@ pub mod gui_controller {
                 BASE_WINDOW_WIDTH - play_queue_box_width - GENERAL_X_PAD,
                 GENERAL_Y_PAD * 2,
             )
-            .with_id(PLAY_QUEUE_BOX_ID);
+            .with_id(PLAY_QUEUE_SCROLL_ID);
         main_playqueue.set_color(get_jedmp_color(JedMP_Colors::Background_color));
         main_playqueue.set_frame(FrameType::UpBox);
 
-        let mpq_pack = Pack::default_fill();
+        let mpq_pack = Pack::default_fill().with_id(PLAY_QUEUE_PACK_ID);
 
         mpq_pack.end();
         main_playqueue.add(&mpq_pack);
@@ -523,8 +525,8 @@ pub mod gui_controller {
     }
 
     pub fn append_song_to_queue(pq_song: PlayQueueSong) {
-        let mut play_queue_box: Scroll =
-            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
+        let mut play_queue_box: Pack =
+            app::widget_from_id(PLAY_QUEUE_PACK_ID).expect("Play queue box not set with id");
         let song_iden = SongIdentifier::new(
             IN_PLAY_QUEUE_BOX_WIDTH,
             IN_PLAY_QUEUE_BOX_HEIGHT,
@@ -538,8 +540,8 @@ pub mod gui_controller {
         app::redraw();
     }
     pub fn insert_song_to_queue(pq_song: PlayQueueSong) {
-        let mut play_queue_box: Scroll =
-            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
+        let mut play_queue_box: Pack =
+            app::widget_from_id(PLAY_QUEUE_PACK_ID).expect("Play queue box not set with id");
         let current_index = *PLAY_QUEUE_INDEX.read().unwrap();
 
         let song_iden = SongIdentifier::new(
@@ -566,7 +568,7 @@ pub mod gui_controller {
     }
     pub fn remove_song_from_playqueue(rm_index: usize) {
         let mut play_queue_box: Pack =
-            app::widget_from_id(PLAY_QUEUE_BOX_ID).expect("Play queue box not set with id");
+            app::widget_from_id(PLAY_QUEUE_PACK_ID).expect("Play queue box not set with id");
         play_queue_box.remove_by_index(rm_index as i32);
     }
     pub fn make_library_list_frames(tablib: &mut TabLibrary, which_pq: usize) {
