@@ -3,13 +3,19 @@ I couldn't find a music player I liked on Linux. So,I decided to make an open so
 
 Tauon is also a competent music player. Though, if you're like me.. It crashes. Too often. I suppose that'd the drawback of using Python
 
-JedMP Makes use of LibVLC! They are amazing. You may ask "Why not just use VLC then?," to that we say. Have you seen their UI? No shade, of course. It just doesn't have the ease of use I would like out of my Music player. It does it's job spectacularly, however. Just different goals.
+JedMP Makes use of LibVLC! They are amazing. You may ask "Why not just use VLC then?," to that we say. Have you seen their UI? No shade, of course. It just doesn't have the ease of use or functionality I would like out of my Music player. It does it's job spectacularly, however. Just different goals.
 
 ## TODO
-Most recent TODO update - 2025-11-29 20:00 EST
+Most recent TODO update - 2025-12-1 19:19 EST
 
-TODO List:
+TODO List (Unordered):
 
+- Album view by artist's (MusicBee styled implementation)
+- button on discord presence that direct's to this repo
+- Shift and CTRL select
+    - song_iden's 
+    - artist_frames
+    - album frames
 - Current playing song
     - time updates
     - progress bar
