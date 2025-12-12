@@ -1,4 +1,8 @@
-﻿# JedMP
+# Migrated to Codeberg - Fuck github
+This repo has been migrated to Codeberg because Github sucks. Find it here:
+```https://codeberg.org/Jeday_ERZ/JedMP```
+ 
+ # JedMP
 I couldn't find a music player I liked on Linux. So,I decided to make an open source music player written using Rust! JedMP is inspired by MusicBee on windows, unfortunately that program is Windows only and not open source.
 
 Tauon is also a competent music player. Though, if you're like me.. It crashes. Too often. I suppose that'd the drawback of using Python
