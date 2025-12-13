@@ -1,4 +1,4 @@
-# Migrated to Codeberg - Fuck github
+# Migrated to Codeberg 
 This repo has been migrated to Codeberg because Github sucks. Find it here:
 ```https://codeberg.org/Jeday_ERZ/JedMP```
  
